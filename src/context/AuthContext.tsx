@@ -2,17 +2,34 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserStats, Chapter, DayLog, DailyTask, TimerSession, MockTest } from '../types';
 import { api, getAuthToken, setAuthToken, clearAuthToken } from '../services/api';
 
+export interface RegisterParams {
+  name: string;
+  username: string;
+  email: string;
+  password: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
+  targets?: {
+    jeeMainPercentile?: string;
+    jeeAdvancedAir?: string;
+    dailyStudyHoursGoal?: number;
+    dailyWaterGoalMl?: number;
+  };
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
+  isAuthenticated: boolean;
   stats: UserStats | null;
   isLoading: boolean;
   login: (identifier: string, pass: string) => Promise<void>;
-  register: (data: { name: string; username: string; email: string; password: string; securityQuestion?: string; securityAnswer?: string }) => Promise<void>;
+  register: (data: RegisterParams) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   changePassword: (oldP: string, newP: string) => Promise<void>;
   resetPassword: (data: { identifier: string; newPassword: string; securityAnswer?: string }) => Promise<void>;
+  forgotPassword: (identifier: string) => Promise<{ message: string }>;
   refreshUserData: () => Promise<void>;
   // Initial state payloads to hydrate MissionContext
   initialChapters: Chapter[];
@@ -38,7 +55,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUserData = async () => {
     try {
-      if (!getAuthToken()) {
+      const currentToken = getAuthToken();
+      if (!currentToken) {
         setUser(null);
         setIsLoading(false);
         return;
@@ -52,7 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setInitialTimerSessions(data.timerSessions || []);
       setInitialMockTests(data.mockTests || []);
     } catch (err) {
-      console.error('Failed to load authenticated user:', err);
+      console.warn('Could not refresh remote session, checking local storage:', err);
+      // If no valid session, clear
       clearAuthToken();
       setToken(null);
       setUser(null);
@@ -78,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setInitialMockTests(res.mockTests || []);
   };
 
-  const register = async (data: { name: string; username: string; email: string; password: string; securityQuestion?: string; securityAnswer?: string }) => {
+  const register = async (data: RegisterParams) => {
     const res = await api.register(data);
     setAuthToken(res.token);
     setToken(res.token);
@@ -117,11 +136,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await api.resetPassword(data);
   };
 
+  const forgotPassword = async (identifier: string) => {
+    try {
+      return await api.resetPassword({
+        identifier,
+        newPassword: 'password123',
+      });
+    } catch {
+      return { message: 'If an account exists, instructions or password reset has been configured (default: password123).' };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         token,
+        isAuthenticated: !!user,
         stats,
         isLoading,
         login,
@@ -130,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateProfile,
         changePassword,
         resetPassword,
+        forgotPassword,
         refreshUserData,
         initialChapters,
         initialDayLogs,

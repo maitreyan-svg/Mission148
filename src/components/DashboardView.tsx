@@ -54,16 +54,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateTab }) =
   const waterMl = currentLog?.waterMl || 0;
   const mealsLogged = currentLog?.meals ? [currentLog.meals.breakfast, currentLog.meals.lunch, currentLog.meals.dinner].filter(Boolean).length : 0;
 
-  // Past 7 days calculation for Bento velocity bar graph
+  // 7 days window calculation for Bento velocity bar graph
   const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const recentDays = [1, 2, 3, 4, 5, 6, 7].map((offset, index) => {
-    const dayNum = Math.max(1, activeDayNumber - 6 + index);
+  const startDay = Math.max(1, Math.min(148 - 6, activeDayNumber > 7 ? activeDayNumber - 6 : 1));
+  const recentDays = [0, 1, 2, 3, 4, 5, 6].map((offset, index) => {
+    const dayNum = startDay + offset;
     const log = dayLogs[dayNum];
     const hrs = log?.actualHours || 0;
     const heightPercent = Math.min(100, Math.max(15, Math.round((hrs / targetHours) * 90)));
     return {
       dayNum,
-      label: weekDays[index % 7],
+      label: `D${dayNum}`,
       hours: hrs,
       heightPercent,
       isCurrentDay: dayNum === activeDayNumber

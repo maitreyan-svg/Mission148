@@ -252,6 +252,12 @@ export function registerUser(params: {
   password: string;
   securityQuestion?: string;
   securityAnswer?: string;
+  targets?: {
+    jeeMainPercentile?: string;
+    jeeAdvancedAir?: string;
+    dailyStudyHoursGoal?: number;
+    dailyWaterGoalMl?: number;
+  };
 }): { token: string; user: UserProfile } {
   const db = loadDb();
   const cleanUsername = sanitizeUsername(params.username);
@@ -287,10 +293,10 @@ export function registerUser(params: {
     username: `@${cleanUsername}`,
     email: cleanEmail,
     targets: {
-      jeeMainPercentile: '96+',
-      jeeAdvancedAIR: '< 10,000',
-      dailyStudyHoursGoal: 10,
-      dailyWaterGoalMl: 3000,
+      jeeMainPercentile: params.targets?.jeeMainPercentile || '96+',
+      jeeAdvancedAIR: params.targets?.jeeAdvancedAir || '< 10,000',
+      dailyStudyHoursGoal: params.targets?.dailyStudyHoursGoal || 10,
+      dailyWaterGoalMl: params.targets?.dailyWaterGoalMl || 3000,
     },
     isPublic: true,
     createdAt: new Date().toISOString(),

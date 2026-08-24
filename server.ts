@@ -60,7 +60,7 @@ async function startServer() {
 
   app.post('/api/auth/register', (req, res) => {
     try {
-      const { name, username, email, password, securityQuestion, securityAnswer } = req.body;
+      const { name, username, email, password, securityQuestion, securityAnswer, targets } = req.body;
       if (!name || !username || !email || !password) {
         return res.status(400).json({ error: 'Name, username, email, and password are required.' });
       }
@@ -72,6 +72,7 @@ async function startServer() {
         password,
         securityQuestion,
         securityAnswer,
+        targets,
       });
 
       const userRecord = getUserFullRecord(result.user.id);

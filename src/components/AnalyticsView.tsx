@@ -30,9 +30,10 @@ export const AnalyticsView: React.FC = () => {
   const mathProgress = stats?.mathematics.progressPercent || 0;
   const overallSubjectAvg = Math.round((physicsProgress + chemistryProgress + mathProgress) / 3);
 
-  // Generate last 14 days activity trend for chart
+  // Generate 14-day activity trend window for chart
+  const startDay = Math.max(1, Math.min(TOTAL_MISSION_DAYS - 13, activeDayNumber > 14 ? activeDayNumber - 13 : 1));
   const recentDays = Array.from({ length: 14 }).map((_, idx) => {
-    const dayNum = Math.max(1, activeDayNumber - 13 + idx);
+    const dayNum = startDay + idx;
     const log = dayLogs[dayNum];
     const hrs = log ? log.actualHours : 0;
     const target = log ? log.targetHours : (user?.targets.dailyStudyHoursGoal || 10);

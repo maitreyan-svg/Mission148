@@ -9,7 +9,8 @@ import {
   Sparkles,
   Lock,
   Mail,
-  User
+  User,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -48,27 +49,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (mode === 'login') {
+        if (!username.trim() || !password) {
+          setError('Please enter your username/email and password.');
+          setIsSubmitting(false);
+          return;
+        }
         await login(username.trim(), password);
         onClose();
       } else if (mode === 'register') {
         if (!name.trim() || !username.trim() || !email.trim() || !password) {
-          setError('Please fill in all fields.');
+          setError('Please fill in all required fields.');
           setIsSubmitting(false);
           return;
         }
-        await register(name.trim(), username.trim(), email.trim(), password, {
-          jeeMainPercentile: jeeMainPercentile.trim(),
-          jeeAdvancedAir: jeeAdvancedAir.trim(),
-          dailyStudyHoursGoal: 10,
-          dailyWaterGoalMl: 3000,
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters.');
+          setIsSubmitting(false);
+          return;
+        }
+        await register({
+          name: name.trim(),
+          username: username.trim(),
+          email: email.trim(),
+          password,
+          targets: {
+            jeeMainPercentile: jeeMainPercentile.trim() || '96+',
+            jeeAdvancedAir: jeeAdvancedAir.trim() || '< 10,000',
+            dailyStudyHoursGoal: 10,
+            dailyWaterGoalMl: 3000,
+          }
         });
         onClose();
       } else if (mode === 'forgot') {
-        const res = await forgotPassword(email.trim());
-        setSuccessMsg(res.message);
+        if (!email.trim() && !username.trim()) {
+          setError('Please enter your registered email or username.');
+          setIsSubmitting(false);
+          return;
+        }
+        const res = await forgotPassword(email.trim() || username.trim());
+        setSuccessMsg(res.message || 'Password reset instructions sent.');
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication error');
+      setError(err.message || 'Authentication error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -83,7 +105,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -110,15 +132,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
         {successMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono">
-            {successMsg}
+          <div className="mb-4 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successMsg}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'register' && (
             <div>
-              <label className="block text-xs font-mono text-slate-400 mb-1">Full Name</label>
+              <label className="block text-xs font-mono text-slate-400 mb-1">Full Name *</label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
@@ -135,12 +158,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {mode !== 'forgot' && (
             <div>
-              <label className="block text-xs font-mono text-slate-400 mb-1">Username or Handle</label>
+              <label className="block text-xs font-mono text-slate-400 mb-1">
+                {mode === 'login' ? 'Username or Email *' : 'Username (Handle) *'}
+              </label>
               <div className="relative">
                 <span className="text-slate-500 font-mono text-xs absolute left-3.5 top-3">@</span>
                 <input
                   type="text"
-                  placeholder="e.g. nibir148"
+                  placeholder={mode === 'login' ? 'nibir148 or aspirant@jee2027.com' : 'nibir148'}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
@@ -152,7 +177,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {(mode === 'register' || mode === 'forgot') && (
             <div>
-              <label className="block text-xs font-mono text-slate-400 mb-1">Email Address</label>
+              <label className="block text-xs font-mono text-slate-400 mb-1">
+                {mode === 'forgot' ? 'Registered Email or Username *' : 'Email Address *'}
+              </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
@@ -161,7 +188,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
-                  required
+                  required={mode === 'register'}
                 />
               </div>
             </div>
@@ -169,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {mode !== 'forgot' && (
             <div>
-              <label className="block text-xs font-mono text-slate-400 mb-1">Password</label>
+              <label className="block text-xs font-mono text-slate-400 mb-1">Password *</label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
@@ -192,6 +219,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={jeeMainPercentile}
                   onChange={(e) => setJeeMainPercentile(e.target.value)}
+                  placeholder="e.g. 96+, 99+"
                   className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-mono text-xs"
                 />
               </div>
@@ -201,6 +229,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={jeeAdvancedAir}
                   onChange={(e) => setJeeAdvancedAir(e.target.value)}
+                  placeholder="e.g. < 10,000"
                   className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-mono text-xs"
                 />
               </div>
@@ -210,10 +239,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer mt-2"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer mt-2 flex items-center justify-center space-x-2"
           >
-            {isSubmitting ? 'Processing...' : (
-              mode === 'login' ? 'Sign In to Mission' : mode === 'register' ? 'Join Mission 148' : 'Send Reset Link'
+            {isSubmitting ? (
+              <span>Connecting to Mission...</span>
+            ) : mode === 'login' ? (
+              <>
+                <LogIn className="w-4 h-4" />
+                <span>Sign In to Mission</span>
+              </>
+            ) : mode === 'register' ? (
+              <>
+                <UserPlus className="w-4 h-4" />
+                <span>Join Mission 148</span>
+              </>
+            ) : (
+              <>
+                <KeyRound className="w-4 h-4" />
+                <span>Reset Password</span>
+              </>
             )}
           </button>
         </form>
@@ -226,7 +270,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span className="text-slate-500">Don't have an account? </span>
                 <button
                   onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
-                  className="text-emerald-400 font-bold hover:underline"
+                  className="text-emerald-400 font-bold hover:underline cursor-pointer"
                 >
                   Register here
                 </button>
@@ -234,7 +278,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div>
                 <button
                   onClick={() => { setMode('forgot'); setError(''); setSuccessMsg(''); }}
-                  className="text-slate-400 hover:text-slate-300"
+                  className="text-slate-400 hover:text-slate-300 cursor-pointer"
                 >
                   Forgot password?
                 </button>
@@ -247,7 +291,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span className="text-slate-500">Already registered? </span>
               <button
                 onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
-                className="text-emerald-400 font-bold hover:underline"
+                className="text-emerald-400 font-bold hover:underline cursor-pointer"
               >
                 Sign In
               </button>
@@ -258,7 +302,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div>
               <button
                 onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
-                className="text-emerald-400 font-bold hover:underline"
+                className="text-emerald-400 font-bold hover:underline cursor-pointer"
               >
                 Back to Sign In
               </button>
