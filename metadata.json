@@ -1,0 +1,6 @@
+{
+  "name": "JEE 2027 — Mission 148",
+  "description": "Personal JEE Main & Advanced preparation tracking command center with a 148-day mission timeline, chapter tracker, study timer, public leaderboards, and progress analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
