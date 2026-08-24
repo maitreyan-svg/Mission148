@@ -38,162 +38,56 @@ export function sanitizeUsername(username: string): string {
 }
 
 function getInitialDb(): LocalDatabaseSchema {
-  const db: LocalDatabaseSchema = {
+  return {
     users: {},
     usernamesMap: {},
     emailsMap: {},
   };
+}
 
-  const sampleUsers = [
-    {
-      name: 'Nibir Maitreyan',
-      username: 'nibir148',
-      email: 'nibir148@missionjee.org',
-      password: 'password123',
-      targets: {
-        jeeMainPercentile: '99.5+',
-        jeeAdvancedAIR: '< 1,500',
-        dailyStudyHoursGoal: 11,
-        dailyWaterGoalMl: 3500
-      },
-      statsSeed: {
-        currentDay: 28,
-        chapters: [
-          { subject: 'physics' as SubjectType, name: 'Kinematics 1D & 2D', lectures: 12, compLec: [1,2,3,4,5,6,7,8,9,10,11,12], pyqDone: true, pyqTotal: 140, pyqComp: 135, shortNotes: true, rev: 4 },
-          { subject: 'physics' as SubjectType, name: "Newton's Laws of Motion", lectures: 10, compLec: [1,2,3,4,5,6,7,8,9,10], pyqDone: true, pyqTotal: 120, pyqComp: 115, shortNotes: true, rev: 3 },
-          { subject: 'physics' as SubjectType, name: 'Work, Power & Energy', lectures: 8, compLec: [1,2,3,4,5,6,7], pyqDone: false, pyqTotal: 100, pyqComp: 80, shortNotes: true, rev: 2 },
-          { subject: 'chemistry' as SubjectType, name: 'Atomic Structure', lectures: 9, compLec: [1,2,3,4,5,6,7,8,9], pyqDone: true, pyqTotal: 110, pyqComp: 110, shortNotes: true, rev: 3 },
-          { subject: 'chemistry' as SubjectType, name: 'Chemical Bonding & Molecular Structure', lectures: 14, compLec: [1,2,3,4,5,6,7,8,9,10,11,12,13,14], pyqDone: true, pyqTotal: 180, pyqComp: 180, shortNotes: true, rev: 5 },
-          { subject: 'chemistry' as SubjectType, name: 'Thermodynamics & Thermochemistry', lectures: 11, compLec: [1,2,3,4,5,6,7,8], pyqDone: false, pyqTotal: 130, pyqComp: 90, shortNotes: true, rev: 2 },
-          { subject: 'mathematics' as SubjectType, name: 'Quadratic Equations', lectures: 8, compLec: [1,2,3,4,5,6,7,8], pyqDone: true, pyqTotal: 95, pyqComp: 95, shortNotes: true, rev: 4 },
-          { subject: 'mathematics' as SubjectType, name: 'Complex Numbers', lectures: 12, compLec: [1,2,3,4,5,6,7,8,9,10], pyqDone: false, pyqTotal: 140, pyqComp: 110, shortNotes: true, rev: 2 },
-          { subject: 'mathematics' as SubjectType, name: 'Sequences and Series', lectures: 9, compLec: [1,2,3,4,5,6,7,8,9], pyqDone: true, pyqTotal: 125, pyqComp: 125, shortNotes: true, rev: 3 },
-        ],
-        streak: 28,
-        hours: 295,
-      }
-    },
-    {
-      name: 'Arjun Sharma',
-      username: 'arjun_iit',
-      email: 'arjun@missionjee.org',
-      password: 'password123',
-      targets: {
-        jeeMainPercentile: '99+',
-        jeeAdvancedAIR: '< 3,000',
-        dailyStudyHoursGoal: 10,
-        dailyWaterGoalMl: 3000
-      },
-      statsSeed: {
-        currentDay: 26,
-        chapters: [
-          { subject: 'physics' as SubjectType, name: 'Rotational Dynamics', lectures: 16, compLec: [1,2,3,4,5,6,7,8,9,10,11,12], pyqDone: false, pyqTotal: 150, pyqComp: 110, shortNotes: true, rev: 2 },
-          { subject: 'chemistry' as SubjectType, name: 'Periodic Table & Periodicity', lectures: 8, compLec: [1,2,3,4,5,6,7,8], pyqDone: true, pyqTotal: 90, pyqComp: 90, shortNotes: true, rev: 3 },
-          { subject: 'mathematics' as SubjectType, name: 'Coordinate Geometry - Circles', lectures: 11, compLec: [1,2,3,4,5,6,7,8,9,10,11], pyqDone: true, pyqTotal: 130, pyqComp: 130, shortNotes: true, rev: 4 },
-        ],
-        streak: 19,
-        hours: 248,
-      }
-    },
-    {
-      name: 'Priya Iyer',
-      username: 'priya_rank1',
-      email: 'priya@missionjee.org',
-      password: 'password123',
-      targets: {
-        jeeMainPercentile: '98.5+',
-        jeeAdvancedAIR: '< 5,000',
-        dailyStudyHoursGoal: 9.5,
-        dailyWaterGoalMl: 3000
-      },
-      statsSeed: {
-        currentDay: 24,
-        chapters: [
-          { subject: 'physics' as SubjectType, name: 'Electrostatics', lectures: 14, compLec: [1,2,3,4,5,6,7,8,9,10,11,12,13,14], pyqDone: true, pyqTotal: 160, pyqComp: 160, shortNotes: true, rev: 3 },
-          { subject: 'chemistry' as SubjectType, name: 'Equilibrium (Chemical & Ionic)', lectures: 15, compLec: [1,2,3,4,5,6,7,8,9,10,11,12], pyqDone: false, pyqTotal: 145, pyqComp: 110, shortNotes: true, rev: 2 },
-          { subject: 'mathematics' as SubjectType, name: 'Calculus - Limits & Continuity', lectures: 10, compLec: [1,2,3,4,5,6,7,8,9,10], pyqDone: true, pyqTotal: 120, pyqComp: 120, shortNotes: true, rev: 4 },
-        ],
-        streak: 22,
-        hours: 260,
-      }
+function purgeDummyUsers(db: LocalDatabaseSchema): boolean {
+  let changed = false;
+  const dummyIds = ['usr_demo_1', 'usr_demo_2', 'usr_demo_3'];
+  const dummyUsernames = ['nibir148', 'arjun_iit', 'priya_rank1'];
+
+  for (const id of Object.keys(db.users)) {
+    const user = db.users[id];
+    const username = (user?.profile?.username || '').toLowerCase().replace(/^@+/, '');
+    if (dummyIds.includes(id) || dummyUsernames.includes(username)) {
+      delete db.users[id];
+      changed = true;
     }
-  ];
+  }
 
-  sampleUsers.forEach((s, uIndex) => {
-    const userId = `usr_demo_${uIndex + 1}`;
-    const userProfile: UserProfile = {
-      id: userId,
-      name: s.name,
-      username: s.username,
-      email: s.email,
-      targets: s.targets,
-      isPublic: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const chapters: Chapter[] = s.statsSeed.chapters.map((c, idx) => ({
-      id: `chap_${userId}_${idx + 1}`,
-      userId,
-      subject: c.subject,
-      name: c.name,
-      totalLectures: c.lectures,
-      completedLectures: c.compLec,
-      pyq: {
-        isDone: c.pyqDone,
-        isDetailed: true,
-        total: c.pyqTotal,
-        completed: c.pyqComp,
-        correct: Math.round(c.pyqComp * 0.85),
-        incorrect: Math.round(c.pyqComp * 0.15),
-      },
-      shortNotesMade: c.shortNotes,
-      revisionCount: c.rev,
-      order: idx + 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
-
-    const dayLogs: Record<number, DayLog> = {};
-    for (let day = 1; day <= s.statsSeed.currentDay; day++) {
-      const hours = 8.5 + (day % 3) * 1.2;
-      dayLogs[day] = {
-        dayNumber: day,
-        date: `2026-08-${String(23 + day).padStart(2, '0')}`,
-        targetHours: s.targets.dailyStudyHoursGoal,
-        actualHours: hours,
-        status: 'completed',
-        meals: { breakfast: true, lunch: true, dinner: true },
-        waterMl: 3000,
-        subjectHours: {
-          physics: hours * 0.35,
-          chemistry: hours * 0.35,
-          mathematics: hours * 0.3,
-        }
-      };
+  for (const u of Object.keys(db.usernamesMap)) {
+    if (dummyUsernames.includes(u.toLowerCase().replace(/^@+/, '')) || dummyIds.includes(db.usernamesMap[u])) {
+      delete db.usernamesMap[u];
+      changed = true;
     }
+  }
 
-    db.users[userId] = {
-      profile: userProfile,
-      password: s.password,
-      chapters,
-      dayLogs,
-      tasks: [],
-      timerSessions: [],
-      mockTests: []
-    };
-    db.usernamesMap[sanitizeUsername(s.username)] = userId;
-    db.emailsMap[s.email.toLowerCase()] = userId;
-  });
+  for (const e of Object.keys(db.emailsMap)) {
+    if (dummyIds.includes(db.emailsMap[e]) || e.includes('@missionjee.org')) {
+      delete db.emailsMap[e];
+      changed = true;
+    }
+  }
 
-  return db;
+  return changed;
 }
 
 function loadLocalDb(): LocalDatabaseSchema {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: LocalDatabaseSchema = JSON.parse(raw);
+      if (parsed && parsed.users) {
+        const wasPurged = purgeDummyUsers(parsed);
+        if (wasPurged) {
+          saveLocalDb(parsed);
+        }
+        return parsed;
+      }
     }
   } catch (e) {
     console.error('Failed to load local DB from storage:', e);
