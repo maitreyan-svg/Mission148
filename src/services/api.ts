@@ -82,7 +82,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
-  // ---------------- AUTHENTICATION ---------------- //
+  // ---------------- AUTHENTICATION & PERSONAL USER ---------------- //
+
+  getPersonalUser: async () => {
+    return await request<{ 
+      token: string; 
+      user: UserProfile; 
+      stats: UserStats; 
+      chapters: Chapter[]; 
+      dayLogs: Record<number, DayLog>; 
+      tasks: DailyTask[]; 
+      timerSessions: TimerSession[]; 
+      mockTests: MockTest[] 
+    }>('/api/auth/personal-user');
+  },
 
   register: async (data: { 
     name: string; 

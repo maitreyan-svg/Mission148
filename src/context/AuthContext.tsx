@@ -88,22 +88,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUserData = useCallback(async () => {
     try {
       const currentToken = getAuthToken();
+      setSyncStatus('syncing');
+      
       if (!currentToken) {
-        setUser(null);
-        setIsLoading(false);
+        // Auto-initialize personal user session seamlessly
+        const personalData = await api.getPersonalUser();
+        if (personalData?.token) {
+          setAuthToken(personalData.token);
+          setToken(personalData.token);
+        }
+        handleStateHydration(personalData);
         return;
       }
-      setSyncStatus('syncing');
-      const data = await api.getCurrentUser();
-      handleStateHydration(data);
+
+      try {
+        const data = await api.getCurrentUser();
+        handleStateHydration(data);
+      } catch (err: any) {
+        // If expired or not found, auto-retrieve/initialize personal user
+        const personalData = await api.getPersonalUser();
+        if (personalData?.token) {
+          setAuthToken(personalData.token);
+          setToken(personalData.token);
+        }
+        handleStateHydration(personalData);
+      }
     } catch (err: any) {
       if (err.message === 'OFFLINE_NETWORK_ERROR') {
         setSyncStatus('offline');
       } else {
-        console.warn('Could not refresh remote session, clearing token:', err);
-        clearAuthToken();
-        setToken(null);
-        setUser(null);
+        console.warn('Personal session sync warning:', err);
         setSyncStatus('error');
       }
     } finally {

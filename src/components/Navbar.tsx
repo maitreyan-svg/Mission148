@@ -63,8 +63,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'timer', label: 'Study Timer', icon: Timer },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'mock_tests', label: 'Mock Tests', icon: FileCheck2 },
-    { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
-    { id: 'compare', label: 'Compare', icon: Users },
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
@@ -186,44 +184,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             </p>
           </div>
 
-          {/* User Account / Profile Badge & Cloud Sync Status */}
+          {/* Personal Username Badge */}
           <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
-            {isAuthenticated && user ? (
-              <>
-                <div className="hidden md:block">
-                  <SyncStatusBadge />
-                </div>
-                <div className="text-right hidden xl:block">
-                  <p className="text-xs font-bold text-white leading-tight">@{user.username}</p>
-                  <p className="text-[9px] font-mono text-emerald-400">
-                    {user.isPublic ? 'PUBLIC' : 'PRIVATE'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  title="Open Profile Settings"
-                  className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-200 font-bold text-xs transition-all cursor-pointer shadow-inner"
-                >
-                  {user.name.charAt(0).toUpperCase()}
-                </button>
-                <button
-                  onClick={logout}
-                  title="Log out"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <button
-                id="btn-nav-login"
-                onClick={onOpenAuthModal}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
-              >
-                <UserCircle2 className="w-3.5 h-3.5" />
-                <span>Sign In</span>
-              </button>
-            )}
+            <button
+              onClick={() => setActiveTab('profile')}
+              title="Personal Settings & Custom Username"
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 text-white transition-all cursor-pointer shadow-sm group"
+            >
+              <div className="w-5 h-5 rounded-lg bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
+                {(user?.name || user?.username || 'A').charAt(0).toUpperCase()}
+              </div>
+              <span className="text-xs font-mono font-bold text-slate-200 group-hover:text-white">
+                {user?.username || '@aspirant2027'}
+              </span>
+            </button>
           </div>
         </div>
       </header>

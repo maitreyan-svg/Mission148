@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   BarChart3, 
   Flame, 
@@ -16,10 +16,12 @@ import {
 import { useMission } from '../context/MissionContext';
 import { useAuth } from '../context/AuthContext';
 import { TOTAL_MISSION_DAYS } from '../utils/missionDates';
+import { DailyTargetImageCard } from './DailyTargetImageCard';
 
 export const AnalyticsView: React.FC = () => {
   const { user } = useAuth();
-  const { stats, dayLogs, activeDayNumber } = useMission();
+  const { stats, dayLogs, activeDayNumber, tasks } = useMission();
+  const [selectedExportDay, setSelectedExportDay] = useState<number>(activeDayNumber || 1);
 
   const totalHours = stats?.totalStudyHours || 0;
   const avgDailyHours = stats?.averageDailyStudyHours || 0;
@@ -283,6 +285,46 @@ export const AnalyticsView: React.FC = () => {
           <span>14 Days Ago</span>
           <span>Target Consistency: {avgDailyHours >= 10 ? '🔥 On Target' : '📈 Steady Progression'}</span>
           <span>Today (Day {activeDayNumber})</span>
+        </div>
+      </div>
+
+      {/* Day-by-Day Target Image Generator Card */}
+      <div className="p-5 md:p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div>
+            <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-white flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>Day-by-Day Targets Image Exporter</span>
+            </h3>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">
+              Select any mission day to preview and download your high-resolution target report card
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-mono text-slate-400">Select Day:</span>
+            <select
+              value={selectedExportDay}
+              onChange={(e) => setSelectedExportDay(parseInt(e.target.value, 10))}
+              className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+            >
+              {Array.from({ length: TOTAL_MISSION_DAYS }).map((_, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  Day {idx + 1}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Embedded Target Card Preview */}
+        <div className="pt-2">
+          <DailyTargetImageCard
+            dayNumber={selectedExportDay}
+            user={user}
+            dayLog={dayLogs[selectedExportDay]}
+            tasks={tasks}
+          />
         </div>
       </div>
     </div>

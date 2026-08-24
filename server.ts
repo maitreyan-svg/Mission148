@@ -10,7 +10,8 @@ import {
   syncFullCloudUserData,
   calculateStatsFromRecords,
   getPublicProfileFromCloud,
-  getPublicLeaderboardFromCloud
+  getPublicLeaderboardFromCloud,
+  getOrCreatePersonalDefaultUser
 } from './server/cloudDb.ts';
 import { db } from './src/db/index.ts';
 import { users, chapters, dayLogs, dailyTasks, timerSessions, mockTests } from './src/db/schema.ts';
@@ -53,6 +54,27 @@ async function startServer() {
   });
 
   // ---------------- AUTH ROUTES ---------------- //
+
+  // Seamless Personal User auto-initialization & retrieval
+  app.get('/api/auth/personal-user', async (req, res) => {
+    try {
+      const result = await getOrCreatePersonalDefaultUser();
+      const stats = result.fullData ? calculateStatsFromRecords(result.fullData) : null;
+      res.json({
+        token: result.token,
+        user: result.user,
+        stats,
+        chapters: result.fullData?.chapters || [],
+        dayLogs: result.fullData?.dayLogs || {},
+        tasks: result.fullData?.tasks || [],
+        timerSessions: result.fullData?.timerSessions || [],
+        mockTests: result.fullData?.mockTests || [],
+      });
+    } catch (err: any) {
+      console.error('Failed to get or create personal user:', err);
+      res.status(500).json({ error: err.message || 'Failed to initialize personal account.' });
+    }
+  });
 
   app.post('/api/auth/register', async (req, res) => {
     try {

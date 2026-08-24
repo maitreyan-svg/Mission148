@@ -9,7 +9,9 @@ import {
   RotateCw, 
   FileText, 
   Sparkles,
-  Save
+  Save,
+  ImageIcon,
+  Share2
 } from 'lucide-react';
 import { DayStatus } from '../types';
 import { useMission } from '../context/MissionContext';
@@ -18,6 +20,7 @@ import { getMissionDayInfo, TOTAL_MISSION_DAYS } from '../utils/missionDates';
 import { DailyTasksWidget } from './DailyTasksWidget';
 import { DailyRoutineWidget } from './DailyRoutineWidget';
 import { StudyTimerWidget } from './StudyTimerWidget';
+import { DailyTargetImageCard } from './DailyTargetImageCard';
 
 interface DailyTrackerViewProps {
   dayNumber: number;
@@ -30,6 +33,7 @@ export const DailyTrackerView: React.FC<DailyTrackerViewProps> = ({ dayNumber })
     setActiveDayNumber, 
     dayLogs, 
     updateDayLog, 
+    tasks,
     chapters 
   } = useMission();
 
@@ -59,6 +63,7 @@ export const DailyTrackerView: React.FC<DailyTrackerViewProps> = ({ dayNumber })
   const [shortNotesCount, setShortNotesCount] = useState<number>(currentLog.shortNotesLoggedCount || 0);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [showImageCardModal, setShowImageCardModal] = useState<boolean>(false);
 
   // Sync state when day changes
   React.useEffect(() => {
@@ -307,24 +312,47 @@ export const DailyTrackerView: React.FC<DailyTrackerViewProps> = ({ dayNumber })
           />
         </div>
 
-        {/* Save Button */}
-        <div className="mt-4 flex items-center justify-end space-x-3">
-          {savedSuccess && (
-            <span className="text-xs font-mono text-emerald-400 animate-fadeIn">
-              ✓ Day {activeDayNumber} Log Saved!
-            </span>
-          )}
+        {/* Action Buttons: Save Day Record & Save Targets Image */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
           <button
-            id="btn-save-day-log"
-            onClick={handleSaveDayLog}
-            disabled={isSaving}
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            type="button"
+            onClick={() => setShowImageCardModal(true)}
+            className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs font-mono flex items-center space-x-2 transition-all cursor-pointer shadow-sm hover:text-white"
           >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save Day Record'}</span>
+            <ImageIcon className="w-4 h-4 text-emerald-400" />
+            <span>Save Targets as Image</span>
           </button>
+
+          <div className="flex items-center space-x-3">
+            {savedSuccess && (
+              <span className="text-xs font-mono text-emerald-400 animate-fadeIn">
+                ✓ Day {activeDayNumber} Log Saved!
+              </span>
+            )}
+            <button
+              id="btn-save-day-log"
+              onClick={handleSaveDayLog}
+              disabled={isSaving}
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs flex items-center space-x-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? 'Saving...' : 'Save Day Record'}</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Save Target as Image Modal */}
+      {showImageCardModal && (
+        <DailyTargetImageCard
+          dayNumber={activeDayNumber}
+          user={user}
+          dayLog={currentLog}
+          tasks={tasks}
+          onClose={() => setShowImageCardModal(false)}
+          isModal={true}
+        />
+      )}
 
       {/* Daily Tasks & Routine Tracker Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

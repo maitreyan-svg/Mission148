@@ -24,6 +24,143 @@ export function sanitizeUsername(username: string): string {
   return username.trim().toLowerCase().replace(/^@+/, '');
 }
 
+export const DEFAULT_JEE_CHAPTERS: { subject: SubjectType; name: string; totalLectures: number; pyqTotal: number }[] = [
+  // Physics
+  { subject: 'physics', name: 'Units, Dimensions & Errors', totalLectures: 4, pyqTotal: 30 },
+  { subject: 'physics', name: 'Kinematics 1D & 2D', totalLectures: 8, pyqTotal: 45 },
+  { subject: 'physics', name: 'Laws of Motion & Friction', totalLectures: 8, pyqTotal: 40 },
+  { subject: 'physics', name: 'Work, Energy & Power', totalLectures: 6, pyqTotal: 35 },
+  { subject: 'physics', name: 'Circular Motion & Center of Mass', totalLectures: 7, pyqTotal: 40 },
+  { subject: 'physics', name: 'Rotational Dynamics & Moment of Inertia', totalLectures: 10, pyqTotal: 60 },
+  { subject: 'physics', name: 'Gravitation', totalLectures: 5, pyqTotal: 30 },
+  { subject: 'physics', name: 'Mechanical Properties of Solids & Fluids', totalLectures: 8, pyqTotal: 45 },
+  { subject: 'physics', name: 'Thermal Properties & Thermodynamics', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'physics', name: 'Kinetic Theory of Gases', totalLectures: 4, pyqTotal: 25 },
+  { subject: 'physics', name: 'Simple Harmonic Motion (SHM)', totalLectures: 6, pyqTotal: 35 },
+  { subject: 'physics', name: 'Waves & Sound', totalLectures: 7, pyqTotal: 40 },
+  { subject: 'physics', name: 'Electrostatics & Gauss Law', totalLectures: 10, pyqTotal: 65 },
+  { subject: 'physics', name: 'Capacitors', totalLectures: 5, pyqTotal: 35 },
+  { subject: 'physics', name: 'Current Electricity', totalLectures: 9, pyqTotal: 55 },
+  { subject: 'physics', name: 'Magnetic Effects of Current', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'physics', name: 'Magnetism and Matter', totalLectures: 3, pyqTotal: 20 },
+  { subject: 'physics', name: 'Electromagnetic Induction (EMI)', totalLectures: 7, pyqTotal: 45 },
+  { subject: 'physics', name: 'Alternating Current (AC)', totalLectures: 5, pyqTotal: 35 },
+  { subject: 'physics', name: 'Electromagnetic Waves', totalLectures: 3, pyqTotal: 25 },
+  { subject: 'physics', name: 'Ray Optics & Optical Instruments', totalLectures: 10, pyqTotal: 55 },
+  { subject: 'physics', name: 'Wave Optics & Interference', totalLectures: 6, pyqTotal: 35 },
+  { subject: 'physics', name: 'Dual Nature of Radiation & Matter', totalLectures: 4, pyqTotal: 30 },
+  { subject: 'physics', name: 'Atoms & Nuclei', totalLectures: 6, pyqTotal: 40 },
+  { subject: 'physics', name: 'Semiconductor Electronics & Logic Gates', totalLectures: 5, pyqTotal: 40 },
+
+  // Chemistry
+  { subject: 'chemistry', name: 'Some Basic Concepts of Chemistry (Mole Concept)', totalLectures: 6, pyqTotal: 35 },
+  { subject: 'chemistry', name: 'Structure of Atom & Quantum Numbers', totalLectures: 7, pyqTotal: 40 },
+  { subject: 'chemistry', name: 'Classification of Elements & Periodicity', totalLectures: 5, pyqTotal: 35 },
+  { subject: 'chemistry', name: 'Chemical Bonding & Molecular Structure', totalLectures: 10, pyqTotal: 65 },
+  { subject: 'chemistry', name: 'Chemical Thermodynamics & Thermochemistry', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'chemistry', name: 'Chemical & Ionic Equilibrium', totalLectures: 10, pyqTotal: 60 },
+  { subject: 'chemistry', name: 'Redox Reactions', totalLectures: 4, pyqTotal: 25 },
+  { subject: 'chemistry', name: 'Solutions & Colligative Properties', totalLectures: 7, pyqTotal: 45 },
+  { subject: 'chemistry', name: 'Electrochemistry', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'chemistry', name: 'Chemical Kinetics', totalLectures: 7, pyqTotal: 45 },
+  { subject: 'chemistry', name: 'p-Block Elements (Group 13-18)', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'chemistry', name: 'd and f Block Elements', totalLectures: 6, pyqTotal: 40 },
+  { subject: 'chemistry', name: 'Coordination Compounds', totalLectures: 8, pyqTotal: 55 },
+  { subject: 'chemistry', name: 'General Organic Chemistry (GOC & Isomerism)', totalLectures: 12, pyqTotal: 70 },
+  { subject: 'chemistry', name: 'Hydrocarbons (Alkanes, Alkenes, Alkynes, Aromatic)', totalLectures: 9, pyqTotal: 55 },
+  { subject: 'chemistry', name: 'Haloalkanes and Haloarenes', totalLectures: 6, pyqTotal: 40 },
+  { subject: 'chemistry', name: 'Alcohols, Phenols and Ethers', totalLectures: 7, pyqTotal: 45 },
+  { subject: 'chemistry', name: 'Aldehydes, Ketones & Carboxylic Acids', totalLectures: 10, pyqTotal: 60 },
+  { subject: 'chemistry', name: 'Amines & Diazonium Salts', totalLectures: 6, pyqTotal: 40 },
+  { subject: 'chemistry', name: 'Biomolecules', totalLectures: 5, pyqTotal: 35 },
+  { subject: 'chemistry', name: 'Practical Chemistry & Salt Analysis', totalLectures: 4, pyqTotal: 25 },
+
+  // Mathematics
+  { subject: 'mathematics', name: 'Sets, Relations and Functions', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'mathematics', name: 'Complex Numbers & Quadratic Equations', totalLectures: 9, pyqTotal: 55 },
+  { subject: 'mathematics', name: 'Matrices and Determinants', totalLectures: 8, pyqTotal: 55 },
+  { subject: 'mathematics', name: 'Permutations and Combinations', totalLectures: 7, pyqTotal: 45 },
+  { subject: 'mathematics', name: 'Binomial Theorem', totalLectures: 6, pyqTotal: 40 },
+  { subject: 'mathematics', name: 'Sequence and Series (AP, GP, HP, AGP)', totalLectures: 6, pyqTotal: 45 },
+  { subject: 'mathematics', name: 'Limits, Continuity and Differentiability', totalLectures: 9, pyqTotal: 60 },
+  { subject: 'mathematics', name: 'Application of Derivatives (AOD)', totalLectures: 8, pyqTotal: 55 },
+  { subject: 'mathematics', name: 'Indefinite & Definite Integrals', totalLectures: 12, pyqTotal: 75 },
+  { subject: 'mathematics', name: 'Area Under Curves', totalLectures: 4, pyqTotal: 30 },
+  { subject: 'mathematics', name: 'Differential Equations', totalLectures: 6, pyqTotal: 45 },
+  { subject: 'mathematics', name: 'Straight Lines & Pair of Straight Lines', totalLectures: 7, pyqTotal: 45 },
+  { subject: 'mathematics', name: 'Circles', totalLectures: 7, pyqTotal: 50 },
+  { subject: 'mathematics', name: 'Conic Sections (Parabola, Ellipse, Hyperbola)', totalLectures: 11, pyqTotal: 70 },
+  { subject: 'mathematics', name: 'Vector Algebra', totalLectures: 6, pyqTotal: 45 },
+  { subject: 'mathematics', name: 'Three Dimensional Geometry (3D)', totalLectures: 8, pyqTotal: 60 },
+  { subject: 'mathematics', name: 'Probability', totalLectures: 8, pyqTotal: 55 },
+  { subject: 'mathematics', name: 'Trigonometric Ratios, Equations & Inverse Trig', totalLectures: 8, pyqTotal: 50 },
+  { subject: 'mathematics', name: 'Statistics', totalLectures: 3, pyqTotal: 30 },
+];
+
+export async function seedDefaultJEEChapters(userId: string) {
+  const now = new Date();
+  const values = DEFAULT_JEE_CHAPTERS.map((ch, idx) => ({
+    id: `ch_${userId}_${ch.subject}_${idx + 1}`,
+    userId,
+    subject: ch.subject,
+    name: ch.name,
+    totalLectures: ch.totalLectures,
+    completedLectures: JSON.stringify([]),
+    pyq: JSON.stringify({ isDone: false, isDetailed: true, total: ch.pyqTotal, completed: 0, correct: 0, incorrect: 0 }),
+    shortNotesMade: false,
+    revisionCount: 0,
+    order: idx + 1,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  await db.insert(chapters).values(values);
+}
+
+export async function getOrCreatePersonalDefaultUser(customUsername?: string): Promise<{ token: string; user: UserProfile; fullData: any }> {
+  let userRecord;
+  const existingUsers = await db.select().from(users).limit(1);
+
+  if (existingUsers.length > 0) {
+    userRecord = existingUsers[0];
+  } else {
+    const uid = 'usr_personal_aspirant';
+    const now = new Date();
+    const defaultTargets = {
+      jeeMainPercentile: '96+',
+      jeeAdvancedAIR: '< 10,000',
+      dailyStudyHoursGoal: 10,
+      dailyWaterGoalMl: 3000,
+    };
+
+    const inserted = await db.insert(users).values({
+      uid,
+      name: 'Aspirant',
+      username: customUsername ? `@${sanitizeUsername(customUsername)}` : '@aspirant2027',
+      email: 'aspirant@jee2027.local',
+      targets: JSON.stringify(defaultTargets),
+      isPublic: false,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    userRecord = inserted[0];
+  }
+
+  let fullData = await getCloudUserFullRecord(userRecord.uid);
+  if (!fullData || fullData.chapters.length === 0) {
+    await seedDefaultJEEChapters(userRecord.uid);
+    fullData = await getCloudUserFullRecord(userRecord.uid);
+  }
+
+  const token = jwt.sign(
+    { userId: userRecord.uid, email: userRecord.email, username: userRecord.username },
+    JWT_SECRET,
+    { expiresIn: '365d' }
+  );
+
+  return { token, user: fullData!.profile, fullData };
+}
+
 /**
  * Register User with PostgreSQL
  */

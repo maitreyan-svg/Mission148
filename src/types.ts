@@ -189,8 +189,6 @@ export type ActiveTab =
   | 'mathematics'
   | 'analytics'
   | 'mock_tests'
-  | 'leaderboard'
-  | 'compare'
   | 'timer'
   | 'profile';
 

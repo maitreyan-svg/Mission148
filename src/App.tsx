@@ -9,20 +9,15 @@ import { DailyTrackerView } from './components/DailyTrackerView';
 import { SubjectDashboardView } from './components/SubjectDashboardView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { MockTestView } from './components/MockTestView';
-import { LeaderboardView } from './components/LeaderboardView';
-import { CompareUsersView } from './components/CompareUsersView';
 import { StudyTimerWidget } from './components/StudyTimerWidget';
 import { ProfileSettingsView } from './components/ProfileSettingsView';
-import { AuthModal } from './components/AuthModal';
 import { RightSideSlideDrawer } from './components/RightSideSlideDrawer';
 import { Timer, CalendarDays, FileCheck2, ChevronLeft } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const { activeDayNumber, setActiveDayNumber, isTimerRunning, timerSeconds, timerSubject, dayLogs } = useMission();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [compareTargetUsername, setCompareTargetUsername] = useState<string>('');
   
   // Right Slide-Over Drawer State
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
@@ -36,11 +31,6 @@ const MainLayout: React.FC = () => {
   const handleOpenDayTracker = (dayNumber: number) => {
     setActiveDayNumber(dayNumber);
     setActiveTab('daily_tracker');
-  };
-
-  const handleCompareWithUser = (username: string) => {
-    setCompareTargetUsername(username);
-    setActiveTab('compare');
   };
 
   if (isLoading) {
@@ -69,7 +59,7 @@ const MainLayout: React.FC = () => {
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuthModal={() => setActiveTab('profile')}
         onOpenRightDrawer={handleOpenRightDrawer}
       />
 
@@ -158,14 +148,6 @@ const MainLayout: React.FC = () => {
           <MockTestView />
         )}
 
-        {activeTab === 'leaderboard' && (
-          <LeaderboardView onCompareWithUser={handleCompareWithUser} />
-        )}
-
-        {activeTab === 'compare' && (
-          <CompareUsersView />
-        )}
-
         {activeTab === 'timer' && (
           <div className="py-4">
             <StudyTimerWidget isFullScreen={true} />
@@ -201,12 +183,6 @@ const MainLayout: React.FC = () => {
           </div>
         </div>
       </footer>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
     </div>
   );
 };
