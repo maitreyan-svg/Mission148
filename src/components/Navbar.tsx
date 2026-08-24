@@ -24,6 +24,7 @@ import { ActiveTab } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useMission } from '../context/MissionContext';
 import { getExamCountdownDays, getMissionDayInfo } from '../utils/missionDates';
+import { SyncStatusBadge } from './SyncStatusBadge';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -185,10 +186,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             </p>
           </div>
 
-          {/* User Account / Profile Badge */}
+          {/* User Account / Profile Badge & Cloud Sync Status */}
           <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
             {isAuthenticated && user ? (
               <>
+                <div className="hidden md:block">
+                  <SyncStatusBadge />
+                </div>
                 <div className="text-right hidden xl:block">
                   <p className="text-xs font-bold text-white leading-tight">@{user.username}</p>
                   <p className="text-[9px] font-mono text-emerald-400">

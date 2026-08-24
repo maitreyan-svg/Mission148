@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   User, 
   Settings, 
@@ -12,12 +12,33 @@ import {
   KeyRound, 
   Save, 
   LogOut,
-  Sparkles
+  Sparkles,
+  Database,
+  Download,
+  Upload,
+  RefreshCw,
+  Server,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { SyncStatusBadge } from './SyncStatusBadge';
 
 export const ProfileSettingsView: React.FC = () => {
-  const { user, updateProfile, changePassword, resetPassword, logout } = useAuth();
+  const { 
+    user, 
+    updateProfile, 
+    changePassword, 
+    resetPassword, 
+    logout, 
+    exportBackup, 
+    importBackup, 
+    forceCloudSync,
+    syncStatus,
+    lastSyncedAt 
+  } = useAuth();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState<string>(user?.name || '');
   const [email, setEmail] = useState<string>(user?.email || '');
@@ -35,7 +56,10 @@ export const ProfileSettingsView: React.FC = () => {
 
   const [profileMsg, setProfileMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [passMsg, setPassMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [backupMsg, setBackupMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isImporting, setIsImporting] = useState<boolean>(false);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,13 +77,62 @@ export const ProfileSettingsView: React.FC = () => {
           dailyWaterGoalMl: Number(dailyWaterGoal) || 3000,
         },
       });
-      setProfileMsg({ text: '✓ Profile updated successfully!', type: 'success' });
+      setProfileMsg({ text: '✓ Profile updated and synchronized to Cloud SQL database!', type: 'success' });
       setTimeout(() => setProfileMsg(null), 3000);
     } catch (err: any) {
       setProfileMsg({ text: err.message || 'Failed to update profile.', type: 'error' });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setBackupMsg(null);
+    try {
+      await forceCloudSync();
+      setBackupMsg({ text: '✓ Successfully synchronized all records with Cloud SQL PostgreSQL!', type: 'success' });
+      setTimeout(() => setBackupMsg(null), 3000);
+    } catch (err: any) {
+      setBackupMsg({ text: err.message || 'Cloud synchronization failed.', type: 'error' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      await exportBackup();
+      setBackupMsg({ text: '✓ Cloud backup downloaded successfully!', type: 'success' });
+      setTimeout(() => setBackupMsg(null), 3000);
+    } catch (err: any) {
+      setBackupMsg({ text: err.message || 'Export failed.', type: 'error' });
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setBackupMsg(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const backupData = JSON.parse(content);
+        await importBackup(backupData);
+        setBackupMsg({ text: '✓ Backup successfully restored into Cloud SQL and refreshed!', type: 'success' });
+        setTimeout(() => setBackupMsg(null), 4000);
+      } catch (err: any) {
+        setBackupMsg({ text: `Import failed: ${err.message || 'Invalid backup JSON file.'}`, type: 'error' });
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -80,7 +153,7 @@ export const ProfileSettingsView: React.FC = () => {
           identifier: user.email || user.username,
           newPassword,
         });
-        setPassMsg({ text: '✓ Password reset and updated successfully!', type: 'success' });
+        setPassMsg({ text: '✓ Password reset and updated successfully in cloud database!', type: 'success' });
       } else {
         await changePassword(currentPassword, newPassword);
         setPassMsg({ text: '✓ Password changed successfully!', type: 'success' });
@@ -107,7 +180,7 @@ export const ProfileSettingsView: React.FC = () => {
               ACCOUNT & MISSION SETTINGS
             </h2>
             <p className="text-xs text-emerald-400 font-mono">
-              Manage personal targets, public visibility, and account credentials
+              Manage personal targets, cloud database persistence, and backup restoration
             </p>
           </div>
         </div>
@@ -119,6 +192,89 @@ export const ProfileSettingsView: React.FC = () => {
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
         </button>
+      </div>
+
+      {/* Cloud Database & Backup Management Card */}
+      <div className="rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-indigo-950/30 p-6 md:p-8 shadow-2xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+              <Database className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                <span>CLOUD DATABASE & PERSISTENT STORAGE</span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400 font-bold">
+                  ACTIVE
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Engine: Cloud SQL PostgreSQL • Region: asia-southeast1 • Real Multi-Device Sync
+              </p>
+            </div>
+          </div>
+
+          <SyncStatusBadge />
+        </div>
+
+        {backupMsg && (
+          <div className={`p-3.5 rounded-xl text-xs font-mono border ${
+            backupMsg.type === 'success' 
+              ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300' 
+              : 'bg-rose-950/60 border-rose-800 text-rose-300'
+          }`}>
+            {backupMsg.text}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {/* Cloud Sync Button */}
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/40 text-indigo-300 text-xs font-mono font-bold transition-all shadow-inner cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-indigo-400' : 'text-indigo-400'}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Force Cloud Sync'}</span>
+          </button>
+
+          {/* Export Data Button */}
+          <button
+            onClick={handleExportData}
+            className="flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold transition-all shadow-inner cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span>Export My Data (.json)</span>
+          </button>
+
+          {/* Import Data Trigger */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+            className="flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold transition-all shadow-inner cursor-pointer"
+          >
+            <Upload className="w-4 h-4 text-cyan-400" />
+            <span>{isImporting ? 'Restoring...' : 'Restore Backup (.json)'}</span>
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".json"
+            className="hidden"
+          />
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-slate-950/50 border border-slate-800 text-[11px] font-mono text-slate-400 space-y-1">
+          <p className="flex items-center gap-1.5 text-slate-300 font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Cross-Device Synchronization Active</span>
+          </p>
+          <p>
+            Your JEE 2027 chapters, PYQs, daily logs, tasks, timer logs, and test series are tied directly to your unique user ID (<span className="text-indigo-300">{user?.id}</span>) and stored securely in Cloud SQL. When you log in from your phone, laptop, or tablet, your data will load instantly.
+          </p>
+        </div>
       </div>
 
       {/* Main Profile Form */}

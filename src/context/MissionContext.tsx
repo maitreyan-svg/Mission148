@@ -6,8 +6,8 @@ import {
   TimerSession, 
   MockTest, 
   UserStats, 
-  SubjectType,
-  PYQTracking
+  SubjectType, 
+  PYQTracking 
 } from '../types';
 import { useAuth } from './AuthContext';
 import { api } from '../services/api';
@@ -56,7 +56,16 @@ interface MissionContextType {
 const MissionContext = createContext<MissionContextType | undefined>(undefined);
 
 export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, stats: authStats, initialChapters, initialDayLogs, initialTasks, initialTimerSessions, initialMockTests, refreshUserData } = useAuth();
+  const { 
+    user, 
+    stats: authStats, 
+    initialChapters, 
+    initialDayLogs, 
+    initialTasks, 
+    initialTimerSessions, 
+    initialMockTests,
+    setSyncStatus
+  } = useAuth();
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [activeDayNumber, setActiveDayNumber] = useState<number>(1);
@@ -113,6 +122,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const dayNumber = activeDayNumber;
     const dateStr = `2026-08-${String(23 + dayNumber).padStart(2, '0')}`;
 
+    setSyncStatus('syncing');
     try {
       const res = await api.logTimerSession({
         dayNumber,
@@ -129,8 +139,10 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       resetTimer();
+      setSyncStatus('saved');
       confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
     } catch (e) {
+      setSyncStatus('error');
       console.error('Failed to log timer session:', e);
     }
   };
@@ -139,19 +151,26 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const totalMinutes = (hours * 60) + minutes;
     if (totalMinutes <= 0) return;
 
-    const dateStr = `2026-08-${String(23 + dayNumber).padStart(2, '0')}`;
-    const res = await api.logTimerSession({
-      dayNumber,
-      date: dateStr,
-      subject,
-      durationMinutes: totalMinutes,
-      notes: 'Manual study time log',
-    });
+    setSyncStatus('syncing');
+    try {
+      const dateStr = `2026-08-${String(23 + dayNumber).padStart(2, '0')}`;
+      const res = await api.logTimerSession({
+        dayNumber,
+        date: dateStr,
+        subject,
+        durationMinutes: totalMinutes,
+        notes: 'Manual study time log',
+      });
 
-    setTimerSessions(prev => [res.session, ...prev]);
-    if (res.stats) setStats(res.stats);
-    if (res.dayLog) {
-      setDayLogs(prev => ({ ...prev, [dayNumber]: res.dayLog! }));
+      setTimerSessions(prev => [res.session, ...prev]);
+      if (res.stats) setStats(res.stats);
+      if (res.dayLog) {
+        setDayLogs(prev => ({ ...prev, [dayNumber]: res.dayLog! }));
+      }
+      setSyncStatus('saved');
+    } catch (e) {
+      setSyncStatus('error');
+      console.error('Failed to add study time:', e);
     }
   };
 
@@ -167,32 +186,53 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       incorrect: 0
     };
 
-    const res = await api.addChapter({
-      subject,
-      name: name.trim(),
-      totalLectures: Math.max(1, totalLectures),
-      completedLectures: [],
-      pyq: defaultPyq,
-      shortNotesMade: false,
-      revisionCount: 0,
-      order: chapters.filter(c => c.subject === subject).length + 1
-    });
+    setSyncStatus('syncing');
+    try {
+      const res = await api.addChapter({
+        subject,
+        name: name.trim(),
+        totalLectures: Math.max(1, totalLectures),
+        completedLectures: [],
+        pyq: defaultPyq,
+        shortNotesMade: false,
+        revisionCount: 0,
+        order: chapters.filter(c => c.subject === subject).length + 1
+      });
 
-    setChapters(prev => [...prev, res.chapter]);
-    if (res.stats) setStats(res.stats);
-    return res.chapter;
+      setChapters(prev => [...prev, res.chapter]);
+      if (res.stats) setStats(res.stats);
+      setSyncStatus('saved');
+      return res.chapter;
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   const updateChapter = async (id: string, updates: Partial<Chapter>) => {
-    const res = await api.updateChapter(id, updates);
-    setChapters(prev => prev.map(c => c.id === id ? res.chapter : c));
-    if (res.stats) setStats(res.stats);
+    setSyncStatus('syncing');
+    try {
+      const res = await api.updateChapter(id, updates);
+      setChapters(prev => prev.map(c => c.id === id ? res.chapter : c));
+      if (res.stats) setStats(res.stats);
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   const deleteChapter = async (id: string) => {
-    const res = await api.deleteChapter(id);
-    setChapters(prev => prev.filter(c => c.id !== id));
-    if (res.stats) setStats(res.stats);
+    setSyncStatus('syncing');
+    try {
+      const res = await api.deleteChapter(id);
+      setChapters(prev => prev.filter(c => c.id !== id));
+      if (res.stats) setStats(res.stats);
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   const toggleLectureCompleted = async (chapterId: string, lectureNum: number) => {
@@ -221,7 +261,6 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...pyqUpdates,
     };
 
-    // If marked done
     if (pyqUpdates.isDone !== undefined && pyqUpdates.isDone) {
       newPyq.completed = newPyq.total || 100;
     }
@@ -248,9 +287,16 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // ---------------- DAY LOGS & ROUTINE ---------------- //
 
   const updateDayLog = async (dayNumber: number, data: Partial<DayLog>) => {
-    const res = await api.saveDayLog(dayNumber, data);
-    setDayLogs(prev => ({ ...prev, [dayNumber]: res.dayLog }));
-    if (res.stats) setStats(res.stats);
+    setSyncStatus('syncing');
+    try {
+      const res = await api.saveDayLog(dayNumber, data);
+      setDayLogs(prev => ({ ...prev, [dayNumber]: res.dayLog }));
+      if (res.stats) setStats(res.stats);
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   const updateMealRoutine = async (dayNumber: number, meal: 'breakfast' | 'lunch' | 'dinner', checked: boolean) => {
@@ -293,15 +339,22 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addDailyTask = async (dayNumber: number, subject: SubjectType | 'general', title: string) => {
     if (!title.trim()) return;
-    const res = await api.saveTask({
-      dayNumber,
-      subject,
-      title: title.trim(),
-      completed: false,
-      order: tasks.filter(t => t.dayNumber === dayNumber).length + 1
-    });
+    setSyncStatus('syncing');
+    try {
+      const res = await api.saveTask({
+        dayNumber,
+        subject,
+        title: title.trim(),
+        completed: false,
+        order: tasks.filter(t => t.dayNumber === dayNumber).length + 1
+      });
 
-    setTasks(prev => [...prev, res.task]);
+      setTasks(prev => [...prev, res.task]);
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   const toggleDailyTask = async (taskId: string) => {
@@ -309,36 +362,64 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!t) return;
 
     const newCompleted = !t.completed;
-    const res = await api.saveTask({
-      id: taskId,
-      dayNumber: t.dayNumber,
-      subject: t.subject,
-      title: t.title,
-      completed: newCompleted,
-      order: t.order
-    });
+    setSyncStatus('syncing');
+    try {
+      const res = await api.saveTask({
+        id: taskId,
+        dayNumber: t.dayNumber,
+        subject: t.subject,
+        title: t.title,
+        completed: newCompleted,
+        order: t.order
+      });
 
-    setTasks(prev => prev.map(item => item.id === taskId ? res.task : item));
-    if (newCompleted) {
-      confetti({ particleCount: 25, spread: 50, origin: { y: 0.8 } });
+      setTasks(prev => prev.map(item => item.id === taskId ? res.task : item));
+      setSyncStatus('saved');
+      if (newCompleted) {
+        confetti({ particleCount: 25, spread: 50, origin: { y: 0.8 } });
+      }
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
     }
   };
 
   const deleteDailyTask = async (taskId: string) => {
-    await api.deleteTask(taskId);
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    setSyncStatus('syncing');
+    try {
+      await api.deleteTask(taskId);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   // ---------------- MOCK TESTS ---------------- //
 
   const addMockTest = async (data: Omit<MockTest, 'id' | 'userId' | 'createdAt'>) => {
-    const res = await api.saveMockTest(data);
-    setMockTests(prev => [res.mockTest, ...prev]);
+    setSyncStatus('syncing');
+    try {
+      const res = await api.saveMockTest(data);
+      setMockTests(prev => [res.mockTest, ...prev]);
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   const deleteMockTest = async (id: string) => {
-    await api.deleteMockTest(id);
-    setMockTests(prev => prev.filter(m => m.id !== id));
+    setSyncStatus('syncing');
+    try {
+      await api.deleteMockTest(id);
+      setMockTests(prev => prev.filter(m => m.id !== id));
+      setSyncStatus('saved');
+    } catch (err) {
+      setSyncStatus('error');
+      throw err;
+    }
   };
 
   return (
