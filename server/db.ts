@@ -51,7 +51,23 @@ function loadDb(): DatabaseSchema {
     try {
       const data = fs.readFileSync(DB_FILE, 'utf-8');
       dbCache = JSON.parse(data);
-      return dbCache!;
+      if (dbCache && dbCache.users) {
+        if (!dbCache.usernamesMap) dbCache.usernamesMap = {};
+        if (!dbCache.emailsMap) dbCache.emailsMap = {};
+        
+        // Auto-sync usernames and emails maps
+        for (const [uid, userRec] of Object.entries(dbCache.users)) {
+          if (userRec?.profile?.username) {
+            const uName = sanitizeUsername(userRec.profile.username);
+            dbCache.usernamesMap[uName] = uid;
+          }
+          if (userRec?.profile?.email) {
+            const uEmail = userRec.profile.email.trim().toLowerCase();
+            dbCache.emailsMap[uEmail] = uid;
+          }
+        }
+        return dbCache!;
+      }
     } catch (e) {
       console.error('Error reading db file, re-initializing:', e);
     }
@@ -117,11 +133,11 @@ export function registerUser(params: {
     throw new Error('Password must be at least 6 characters.');
   }
 
-  if (db.usernamesMap[cleanUsername]) {
+  if (db.usernamesMap[cleanUsername] && db.users[db.usernamesMap[cleanUsername]]) {
     throw new Error(`Username @${cleanUsername} is already taken. Please choose another.`);
   }
-  if (db.emailsMap[cleanEmail]) {
-    throw new Error(`Email ${cleanEmail} is already registered. Please login.`);
+  if (db.emailsMap[cleanEmail] && db.users[db.emailsMap[cleanEmail]]) {
+    throw new Error(`Email ${cleanEmail} is already registered. Please log in or use Forgot Password.`);
   }
 
   const userId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
@@ -173,21 +189,35 @@ export function registerUser(params: {
  */
 export function loginUser(identifier: string, password: string): { token: string; user: UserProfile } {
   const db = loadDb();
-  const cleanId = identifier.trim().toLowerCase().replace(/^@+/, '');
+  const rawClean = identifier.trim().toLowerCase();
+  const cleanId = rawClean.replace(/^@+/, '');
   
-  let userId = db.usernamesMap[cleanId] || db.emailsMap[cleanId];
-  if (!userId) {
-    throw new Error('No account found with this username or email.');
+  let userId = db.usernamesMap[cleanId] || db.emailsMap[rawClean] || db.emailsMap[cleanId];
+  
+  // Dynamic fallback search across all user records
+  if (!userId || !db.users[userId]) {
+    for (const [uid, userRec] of Object.entries(db.users)) {
+      if (!userRec || !userRec.profile) continue;
+      const userUname = sanitizeUsername(userRec.profile.username || '');
+      const userEmail = (userRec.profile.email || '').trim().toLowerCase();
+      if (userUname === cleanId || userEmail === rawClean || userEmail === cleanId) {
+        userId = uid;
+        db.usernamesMap[userUname] = uid;
+        db.emailsMap[userEmail] = uid;
+        saveDb();
+        break;
+      }
+    }
+  }
+
+  if (!userId || !db.users[userId]) {
+    throw new Error(`No account found for "${identifier}". Please check spelling or create a new account.`);
   }
 
   const userRecord = db.users[userId];
-  if (!userRecord) {
-    throw new Error('Account record corrupted.');
-  }
-
   const isValid = bcrypt.compareSync(password, userRecord.passwordHash);
   if (!isValid) {
-    throw new Error('Incorrect password. Please try again.');
+    throw new Error('Incorrect password. Please verify and try again or use Reset Password.');
   }
 
   const token = jwt.sign({ userId, email: userRecord.profile.email, username: userRecord.profile.username }, JWT_SECRET, { expiresIn: '60d' });
@@ -195,13 +225,22 @@ export function loginUser(identifier: string, password: string): { token: string
 }
 
 /**
- * Verify JWT Token
+ * Verify JWT Token or Local fallback Token
  */
 export function verifyToken(token: string): string | null {
+  if (!token) return null;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     return decoded.userId;
   } catch (e) {
+    // Check fallback pattern token_<userId>_<timestamp>
+    const match = token.match(/^token_([^_]+)_/) || token.match(/^token_(usr_[^_]+)/);
+    if (match) {
+      const db = loadDb();
+      if (db.users[match[1]]) {
+        return match[1];
+      }
+    }
     return null;
   }
 }
@@ -223,6 +262,24 @@ export function updateUserProfile(userId: string, updates: Partial<UserProfile>)
   if (!user) throw new Error('User not found');
 
   if (updates.name) user.profile.name = updates.name.trim();
+  if (updates.email) {
+    const oldEmail = user.profile.email?.trim().toLowerCase();
+    const newEmail = updates.email.trim().toLowerCase();
+    if (oldEmail && oldEmail !== newEmail) {
+      delete db.emailsMap[oldEmail];
+    }
+    user.profile.email = newEmail;
+    db.emailsMap[newEmail] = userId;
+  }
+  if (updates.username) {
+    const oldUname = sanitizeUsername(user.profile.username || '');
+    const newUname = sanitizeUsername(updates.username);
+    if (oldUname && oldUname !== newUname) {
+      delete db.usernamesMap[oldUname];
+    }
+    user.profile.username = `@${newUname}`;
+    db.usernamesMap[newUname] = userId;
+  }
   if (updates.targets) {
     user.profile.targets = {
       ...user.profile.targets,
@@ -245,14 +302,15 @@ export function updateUserProfile(userId: string, updates: Partial<UserProfile>)
 export function changePassword(userId: string, oldPass: string, newPass: string) {
   const db = loadDb();
   const user = db.users[userId];
-  if (!user) throw new Error('User not found');
+  if (!user) throw new Error('User account not found.');
 
   const isValid = bcrypt.compareSync(oldPass, user.passwordHash);
-  if (!isValid) throw new Error('Current password is incorrect.');
+  if (!isValid) throw new Error('Current password is incorrect. Please verify and try again.');
   if (newPass.length < 6) throw new Error('New password must be at least 6 characters.');
 
   const salt = bcrypt.genSaltSync(10);
   user.passwordHash = bcrypt.hashSync(newPass, salt);
+  user.profile.updatedAt = new Date().toISOString();
   saveDb();
 }
 
@@ -261,21 +319,38 @@ export function changePassword(userId: string, oldPass: string, newPass: string)
  */
 export function resetPassword(identifier: string, newPass: string, securityAnswer?: string) {
   const db = loadDb();
-  const cleanId = identifier.trim().toLowerCase().replace(/^@+/, '');
-  const userId = db.usernamesMap[cleanId] || db.emailsMap[cleanId];
-  if (!userId) throw new Error('Account not found.');
+  const rawClean = identifier.trim().toLowerCase();
+  const cleanId = rawClean.replace(/^@+/, '');
+  let userId = db.usernamesMap[cleanId] || db.emailsMap[rawClean] || db.emailsMap[cleanId];
+  
+  if (!userId || !db.users[userId]) {
+    for (const [uid, userRec] of Object.entries(db.users)) {
+      if (!userRec || !userRec.profile) continue;
+      const userUname = sanitizeUsername(userRec.profile.username || '');
+      const userEmail = (userRec.profile.email || '').trim().toLowerCase();
+      if (userUname === cleanId || userEmail === rawClean || userEmail === cleanId) {
+        userId = uid;
+        db.usernamesMap[userUname] = uid;
+        db.emailsMap[userEmail] = uid;
+        break;
+      }
+    }
+  }
+  
+  if (!userId || !db.users[userId]) {
+    throw new Error(`No account found for "${identifier}". Please check spelling or register.`);
+  }
 
   const user = db.users[userId];
-  if (!user) throw new Error('Account not found.');
-
   if (user.securityAnswerHash && securityAnswer) {
     const isAnswerValid = bcrypt.compareSync(securityAnswer.toLowerCase().trim(), user.securityAnswerHash);
     if (!isAnswerValid) throw new Error('Security answer does not match.');
   }
 
-  if (newPass.length < 6) throw new Error('Password must be at least 6 characters.');
+  if (newPass.length < 6) throw new Error('New password must be at least 6 characters.');
   const salt = bcrypt.genSaltSync(10);
   user.passwordHash = bcrypt.hashSync(newPass, salt);
+  user.profile.updatedAt = new Date().toISOString();
   saveDb();
 }
 

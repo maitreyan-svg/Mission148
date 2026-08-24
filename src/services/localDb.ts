@@ -82,9 +82,20 @@ function loadLocalDb(): LocalDatabaseSchema {
     if (raw) {
       const parsed: LocalDatabaseSchema = JSON.parse(raw);
       if (parsed && parsed.users) {
-        const wasPurged = purgeDummyUsers(parsed);
-        if (wasPurged) {
-          saveLocalDb(parsed);
+        purgeDummyUsers(parsed);
+        if (!parsed.usernamesMap) parsed.usernamesMap = {};
+        if (!parsed.emailsMap) parsed.emailsMap = {};
+        
+        // Auto-sync usernames and emails maps
+        for (const [uid, userRec] of Object.entries(parsed.users)) {
+          if (userRec?.profile?.username) {
+            const uName = sanitizeUsername(userRec.profile.username);
+            parsed.usernamesMap[uName] = uid;
+          }
+          if (userRec?.profile?.email) {
+            const uEmail = userRec.profile.email.trim().toLowerCase();
+            parsed.emailsMap[uEmail] = uid;
+          }
         }
         return parsed;
       }
@@ -304,16 +315,32 @@ export const localDb = {
 
   loginUser: (identifier: string, pass: string) => {
     const db = loadLocalDb();
-    const clean = identifier.trim().toLowerCase().replace(/^@+/, '');
-    const userId = db.usernamesMap[clean] || db.emailsMap[clean];
+    const rawClean = identifier.trim().toLowerCase();
+    const clean = rawClean.replace(/^@+/, '');
+    let userId = db.usernamesMap[clean] || db.emailsMap[rawClean] || db.emailsMap[clean];
 
     if (!userId || !db.users[userId]) {
-      throw new Error('Account not found with this username or email.');
+      for (const [uid, userRec] of Object.entries(db.users)) {
+        if (!userRec || !userRec.profile) continue;
+        const uName = sanitizeUsername(userRec.profile.username || '');
+        const uEmail = (userRec.profile.email || '').trim().toLowerCase();
+        if (uName === clean || uEmail === rawClean || uEmail === clean) {
+          userId = uid;
+          db.usernamesMap[uName] = uid;
+          db.emailsMap[uEmail] = uid;
+          saveLocalDb(db);
+          break;
+        }
+      }
+    }
+
+    if (!userId || !db.users[userId]) {
+      throw new Error(`No account found for "${identifier}". Please verify spelling or create an account.`);
     }
 
     const userRecord = db.users[userId];
     if (userRecord.password !== pass && pass !== 'password123') {
-      throw new Error('Incorrect password. Please verify and try again.');
+      throw new Error('Incorrect password. Please verify and try again or use Reset Password.');
     }
 
     const token = `token_${userId}_${Date.now()}`;
@@ -334,13 +361,12 @@ export const localDb = {
 
   getCurrentUser: (token: string) => {
     const db = loadLocalDb();
-    const match = token.match(/^token_([^_]+)_/);
+    const match = token.match(/^token_([^_]+)_/) || token.match(/^token_(usr_[^_]+)/);
     const userId = match ? match[1] : null;
 
     if (!userId || !db.users[userId]) {
-      // Return first user or default demo user
       const firstId = Object.keys(db.users)[0];
-      if (firstId) {
+      if (firstId && db.users[firstId]) {
         const u = db.users[firstId];
         return {
           user: u.profile,
@@ -370,7 +396,7 @@ export const localDb = {
 
   getUserIdFromToken: (token: string | null): string | null => {
     if (!token) return null;
-    const match = token.match(/^token_([^_]+)_/);
+    const match = token.match(/^token_([^_]+)_/) || token.match(/^token_(usr_[^_]+)/);
     return match ? match[1] : null;
   },
 
@@ -380,6 +406,24 @@ export const localDb = {
     if (!userId || !db.users[userId]) throw new Error('User not authenticated.');
 
     const rec = db.users[userId];
+    if (data.email) {
+      const oldEmail = rec.profile.email?.trim().toLowerCase();
+      const newEmail = data.email.trim().toLowerCase();
+      if (oldEmail && oldEmail !== newEmail) {
+        delete db.emailsMap[oldEmail];
+      }
+      rec.profile.email = newEmail;
+      db.emailsMap[newEmail] = userId;
+    }
+    if (data.username) {
+      const oldUname = sanitizeUsername(rec.profile.username || '');
+      const newUname = sanitizeUsername(data.username);
+      if (oldUname && oldUname !== newUname) {
+        delete db.usernamesMap[oldUname];
+      }
+      rec.profile.username = `@${newUname}`;
+      db.usernamesMap[newUname] = userId;
+    }
     rec.profile = {
       ...rec.profile,
       ...data,
@@ -403,19 +447,37 @@ export const localDb = {
     if (!userId || !db.users[userId]) throw new Error('User not authenticated.');
 
     const rec = db.users[userId];
-    if (rec.password !== oldPass) throw new Error('Current password is incorrect.');
+    if (rec.password !== oldPass) throw new Error('Current password is incorrect. Please verify and try again.');
+    if (newPass.length < 6) throw new Error('New password must be at least 6 characters.');
     rec.password = newPass;
+    rec.profile.updatedAt = new Date().toISOString();
     saveLocalDb(db);
     return { message: 'Password changed successfully.' };
   },
 
   resetPassword: (identifier: string, newPass: string) => {
     const db = loadLocalDb();
-    const clean = identifier.trim().toLowerCase().replace(/^@+/, '');
-    const userId = db.usernamesMap[clean] || db.emailsMap[clean];
-    if (!userId || !db.users[userId]) throw new Error('Account not found.');
+    const rawClean = identifier.trim().toLowerCase();
+    const clean = rawClean.replace(/^@+/, '');
+    let userId = db.usernamesMap[clean] || db.emailsMap[rawClean] || db.emailsMap[clean];
 
+    if (!userId || !db.users[userId]) {
+      for (const [uid, userRec] of Object.entries(db.users)) {
+        if (!userRec || !userRec.profile) continue;
+        const uName = sanitizeUsername(userRec.profile.username || '');
+        const uEmail = (userRec.profile.email || '').trim().toLowerCase();
+        if (uName === clean || uEmail === rawClean || uEmail === clean) {
+          userId = uid;
+          break;
+        }
+      }
+    }
+
+    if (!userId || !db.users[userId]) throw new Error(`No account found for "${identifier}".`);
+
+    if (newPass.length < 6) throw new Error('New password must be at least 6 characters.');
     db.users[userId].password = newPass;
+    db.users[userId].profile.updatedAt = new Date().toISOString();
     saveLocalDb(db);
     return { message: 'Password reset successfully. You can now log in.' };
   },

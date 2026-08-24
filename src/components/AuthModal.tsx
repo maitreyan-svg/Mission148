@@ -25,13 +25,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   initialMode = 'login'
 }) => {
-  const { login, register, forgotPassword } = useAuth();
+  const { login, register, resetPassword } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
   const [username, setUsername] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [jeeMainPercentile, setJeeMainPercentile] = useState<string>('96+');
   const [jeeAdvancedAir, setJeeAdvancedAir] = useState<string>('< 10,000');
 
@@ -81,13 +83,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         });
         onClose();
       } else if (mode === 'forgot') {
-        if (!email.trim() && !username.trim()) {
-          setError('Please enter your registered email or username.');
+        const identifier = email.trim() || username.trim();
+        if (!identifier) {
+          setError('Please enter your registered username or email.');
           setIsSubmitting(false);
           return;
         }
-        const res = await forgotPassword(email.trim() || username.trim());
-        setSuccessMsg(res.message || 'Password reset instructions sent.');
+        if (!newPassword) {
+          setError('Please enter your new password.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (newPassword.length < 6) {
+          setError('New password must be at least 6 characters.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (confirmPassword && newPassword !== confirmPassword) {
+          setError('New passwords do not match.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        await resetPassword({
+          identifier,
+          newPassword,
+        });
+        setSuccessMsg('✓ Password reset successfully! You can now log in.');
+        setUsername(identifier);
+        setPassword(newPassword);
+        setTimeout(() => {
+          setMode('login');
+        }, 1200);
       }
     } catch (err: any) {
       setError(err.message || 'Authentication error. Please try again.');
@@ -165,7 +192,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span className="text-slate-500 font-mono text-xs absolute left-3.5 top-3">@</span>
                 <input
                   type="text"
-                  placeholder={mode === 'login' ? 'nibir148 or aspirant@jee2027.com' : 'nibir148'}
+                  placeholder={mode === 'login' ? 'username or email (e.g. nibir148)' : 'nibir148'}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
@@ -175,10 +202,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {(mode === 'register' || mode === 'forgot') && (
+          {mode === 'register' && (
             <div>
               <label className="block text-xs font-mono text-slate-400 mb-1">
-                {mode === 'forgot' ? 'Registered Email or Username *' : 'Email Address *'}
+                Email Address *
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -188,7 +215,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
-                  required={mode === 'register'}
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {mode === 'forgot' && (
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">
+                Registered Username or Email *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="e.g. nibir148 or yourname@gmail.com"
+                  value={email || username}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setUsername(e.target.value);
+                  }}
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                  required
                 />
               </div>
             </div>
@@ -209,6 +258,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </div>
             </div>
+          )}
+
+          {mode === 'forgot' && (
+            <>
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-1">New Password * (Min 6 characters)</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-1">Confirm New Password *</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {mode === 'register' && (
@@ -242,7 +324,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer mt-2 flex items-center justify-center space-x-2"
           >
             {isSubmitting ? (
-              <span>Connecting to Mission...</span>
+              <span>Processing...</span>
             ) : mode === 'login' ? (
               <>
                 <LogIn className="w-4 h-4" />
@@ -256,7 +338,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ) : (
               <>
                 <KeyRound className="w-4 h-4" />
-                <span>Reset Password</span>
+                <span>Set New Password</span>
               </>
             )}
           </button>

@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 export const ProfileSettingsView: React.FC = () => {
-  const { user, updateProfile, changePassword, logout } = useAuth();
+  const { user, updateProfile, changePassword, resetPassword, logout } = useAuth();
 
   const [name, setName] = useState<string>(user?.name || '');
   const [email, setEmail] = useState<string>(user?.email || '');
@@ -28,6 +28,7 @@ export const ProfileSettingsView: React.FC = () => {
   const [isPublic, setIsPublic] = useState<boolean>(user?.isPublic ?? true);
 
   // Password fields
+  const [useDirectReset, setUseDirectReset] = useState<boolean>(false);
   const [currentPassword, setCurrentPassword] = useState<string>('');
   const [newPassword, setNewPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -74,12 +75,20 @@ export const ProfileSettingsView: React.FC = () => {
     }
 
     try {
-      await changePassword(currentPassword, newPassword);
-      setPassMsg({ text: '✓ Password changed successfully!', type: 'success' });
+      if (useDirectReset && user) {
+        await resetPassword({
+          identifier: user.email || user.username,
+          newPassword,
+        });
+        setPassMsg({ text: '✓ Password reset and updated successfully!', type: 'success' });
+      } else {
+        await changePassword(currentPassword, newPassword);
+        setPassMsg({ text: '✓ Password changed successfully!', type: 'success' });
+      }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => setPassMsg(null), 3000);
+      setTimeout(() => setPassMsg(null), 3500);
     } catch (err: any) {
       setPassMsg({ text: err.message || 'Failed to change password.', type: 'error' });
     }
@@ -277,11 +286,23 @@ export const ProfileSettingsView: React.FC = () => {
 
       {/* Change Password Card */}
       <form onSubmit={handleChangePassword} className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 md:p-8 shadow-xl space-y-4">
-        <div className="flex items-center space-x-2 pb-3 border-b border-slate-800">
-          <KeyRound className="w-4 h-4 text-cyan-400" />
-          <h4 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
-            Security & Change Password
-          </h4>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center space-x-2">
+            <KeyRound className="w-4 h-4 text-cyan-400" />
+            <h4 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+              {useDirectReset ? 'Direct Password Reset' : 'Security & Change Password'}
+            </h4>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setUseDirectReset(!useDirectReset);
+              setPassMsg(null);
+            }}
+            className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+          >
+            {useDirectReset ? 'Use Current Password mode' : 'Forgot current password? Reset directly'}
+          </button>
         </div>
 
         {passMsg && (
@@ -294,36 +315,41 @@ export const ProfileSettingsView: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-mono text-slate-400 mb-1">Current Password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs"
-              required
-            />
-          </div>
+        <div className={`grid grid-cols-1 ${useDirectReset ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4`}>
+          {!useDirectReset && (
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">Current Password *</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                required={!useDirectReset}
+              />
+            </div>
+          )}
 
           <div>
-            <label className="block text-xs font-mono text-slate-400 mb-1">New Password</label>
+            <label className="block text-xs font-mono text-slate-400 mb-1">New Password * (Min 6 chars)</label>
             <input
               type="password"
+              placeholder="••••••••"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-slate-400 mb-1">Confirm New Password</label>
+            <label className="block text-xs font-mono text-slate-400 mb-1">Confirm New Password *</label>
             <input
               type="password"
+              placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
@@ -335,7 +361,7 @@ export const ProfileSettingsView: React.FC = () => {
             className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider flex items-center space-x-1.5 transition-colors cursor-pointer"
           >
             <Shield className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Update Password</span>
+            <span>{useDirectReset ? 'Reset & Save Password' : 'Update Password'}</span>
           </button>
         </div>
       </form>
