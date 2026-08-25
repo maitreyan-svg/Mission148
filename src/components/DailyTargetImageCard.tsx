@@ -40,7 +40,7 @@ export const DailyTargetImageCard: React.FC<DailyTargetImageCardProps> = ({
   const [exportSuccess, setExportSuccess] = useState<boolean>(false);
 
   const dayInfo = getMissionDayInfo(dayNumber);
-  const targetHours = dayLog?.targetHours || user?.targets.dailyStudyHoursGoal || 10;
+  const targetHours = dayLog?.targetHours || user?.targets.dailyStudyHoursGoal || 15;
   const actualHours = dayLog?.actualHours || 0;
   const pct = targetHours > 0 ? Math.round((actualHours / targetHours) * 100) : 0;
   
@@ -201,7 +201,7 @@ export const DailyTargetImageCard: React.FC<DailyTargetImageCardProps> = ({
 
           {/* Subject Distribution if present */}
           {dayLog?.subjectHours && (
-            <div className="grid grid-cols-3 gap-2 pt-1 font-mono text-[10px]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[10px]">
               <div className="bg-slate-950/80 p-2 rounded-xl border border-cyan-500/20 flex items-center justify-between">
                 <span className="text-cyan-400 flex items-center space-x-1">
                   <Atom className="w-3 h-3" />
@@ -216,16 +216,36 @@ export const DailyTargetImageCard: React.FC<DailyTargetImageCardProps> = ({
                 </span>
                 <span className="text-white font-bold">{dayLog.subjectHours.chemistry || 0}h</span>
               </div>
-              <div className="bg-slate-950/80 p-2 rounded-xl border border-amber-500/20 flex items-center justify-between">
-                <span className="text-amber-400 flex items-center space-x-1">
+              <div className="bg-slate-950/80 p-2 rounded-xl border border-indigo-500/20 flex items-center justify-between">
+                <span className="text-indigo-400 flex items-center space-x-1">
                   <Calculator className="w-3 h-3" />
                   <span>Math</span>
                 </span>
                 <span className="text-white font-bold">{dayLog.subjectHours.mathematics || 0}h</span>
               </div>
+              <div className="bg-slate-950/80 p-2 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                <span className="text-amber-400 flex items-center space-x-1">
+                  <Flame className="w-3 h-3" />
+                  <span>Backlog</span>
+                </span>
+                <span className="text-white font-bold">{dayLog.subjectHours.backlog || dayLog.backlogSlot?.hours || 0}h</span>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Backlog Slot Info if logged */}
+        {dayLog?.backlogSlot?.title && (
+          <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-2xl space-y-1 font-mono text-xs">
+            <div className="flex items-center justify-between text-amber-300 font-bold text-[11px]">
+              <span>🔄 BACKLOG SLOT: {dayLog.backlogSlot.title}</span>
+              <span>{dayLog.backlogSlot.completed ? '✓ CLEARED' : `${dayLog.backlogSlot.hours || 0}h LOGGED`}</span>
+            </div>
+            {dayLog.backlogSlot.notes && (
+              <p className="text-[10px] text-slate-300">{dayLog.backlogSlot.notes}</p>
+            )}
+          </div>
+        )}
 
         {/* Daily Target Tasks Checklist */}
         <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl space-y-2">

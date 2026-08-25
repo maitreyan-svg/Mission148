@@ -1,4 +1,5 @@
 export type SubjectType = 'physics' | 'chemistry' | 'mathematics';
+export type ExtendedSubjectType = SubjectType | 'backlog' | 'general';
 
 export type DayStatus = 
   | 'not_started' 
@@ -11,8 +12,14 @@ export type DayStatus =
 export interface UserTargetConfig {
   jeeMainPercentile: string; // e.g. "96+"
   jeeAdvancedAIR: string; // e.g. "< 10,000"
-  dailyStudyHoursGoal: number; // default 10
+  dailyStudyHoursGoal: number; // default 15
   dailyWaterGoalMl: number; // default 3000
+  defaultSubjectSplit?: {
+    physics: number;
+    chemistry: number;
+    mathematics: number;
+    backlog: number;
+  };
 }
 
 export interface UserProfile {
@@ -64,10 +71,17 @@ export interface DailyRoutineMeals {
   dinner: boolean;
 }
 
+export interface DailyBacklogSlot {
+  title?: string;
+  completed?: boolean;
+  notes?: string;
+  hours?: number;
+}
+
 export interface DayLog {
   dayNumber: number; // 1 to 148
   date: string; // YYYY-MM-DD
-  targetHours: number; // default 10
+  targetHours: number; // default 15, adjustable per day
   actualHours: number; // decimal or hours + minutes/60
   status: DayStatus;
   notes?: string;
@@ -78,7 +92,15 @@ export interface DayLog {
     physics: number;
     chemistry: number;
     mathematics: number;
+    backlog?: number;
   };
+  subjectTargetHours?: {
+    physics: number;
+    chemistry: number;
+    mathematics: number;
+    backlog: number;
+  };
+  backlogSlot?: DailyBacklogSlot;
   lecturesCompletedCount?: number;
   pyqsCompletedCount?: number;
   revisionsLoggedCount?: number;
@@ -89,7 +111,7 @@ export interface DailyTask {
   id: string;
   userId: string;
   dayNumber: number;
-  subject: SubjectType | 'general';
+  subject: SubjectType | 'general' | 'backlog';
   title: string;
   completed: boolean;
   order: number;
@@ -101,7 +123,7 @@ export interface TimerSession {
   userId: string;
   dayNumber: number;
   date: string;
-  subject: SubjectType | 'general';
+  subject: SubjectType | 'general' | 'backlog';
   durationMinutes: number;
   chapterId?: string;
   chapterName?: string;

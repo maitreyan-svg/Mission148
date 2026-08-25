@@ -41,10 +41,10 @@ export const StudyTimerWidget: React.FC<StudyTimerWidgetProps> = ({ isFullScreen
   const [showManualModal, setShowManualModal] = useState<boolean>(false);
   const [manualHours, setManualHours] = useState<number>(1);
   const [manualMinutes, setManualMinutes] = useState<number>(30);
-  const [manualSubject, setManualSubject] = useState<SubjectType | 'general'>('physics');
+  const [manualSubject, setManualSubject] = useState<SubjectType | 'general' | 'backlog'>('physics');
 
   const currentLog = dayLogs[activeDayNumber];
-  const targetHours = user?.targets?.dailyStudyHoursGoal || 10;
+  const targetHours = currentLog?.targetHours || user?.targets?.dailyStudyHoursGoal || 15;
   const actualHours = currentLog ? currentLog.actualHours : 0;
   const completionPercent = targetHours > 0 ? Math.min(100, Math.round((actualHours / targetHours) * 100)) : 0;
 
@@ -79,10 +79,11 @@ export const StudyTimerWidget: React.FC<StudyTimerWidgetProps> = ({ isFullScreen
     setShowManualModal(false);
   };
 
-  const subjectTabs: { id: SubjectType | 'general'; label: string; icon: any; color: string }[] = [
+  const subjectTabs: { id: SubjectType | 'general' | 'backlog'; label: string; icon: any; color: string }[] = [
     { id: 'physics', label: 'Physics', icon: Atom, color: 'text-blue-400 border-blue-500/40 bg-blue-500/10' },
     { id: 'chemistry', label: 'Chemistry', icon: FlaskConical, color: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' },
     { id: 'mathematics', label: 'Math', icon: Calculator, color: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/10' },
+    { id: 'backlog', label: 'Backlog', icon: RotateCcw, color: 'text-amber-400 border-amber-500/40 bg-amber-500/10' },
     { id: 'general', label: 'General', icon: Zap, color: 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10' },
   ];
 
@@ -267,6 +268,7 @@ export const StudyTimerWidget: React.FC<StudyTimerWidgetProps> = ({ isFullScreen
                   <option value="physics">⚛ Physics</option>
                   <option value="chemistry">🧪 Chemistry</option>
                   <option value="mathematics">📐 Mathematics</option>
+                  <option value="backlog">🔄 Backlog Slot</option>
                   <option value="general">⚡ General Study</option>
                 </select>
               </div>

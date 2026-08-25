@@ -7,10 +7,12 @@ import {
   MockTest, 
   UserStats, 
   SubjectType, 
-  PYQTracking 
+  PYQTracking,
+  DailyBacklogSlot
 } from '../types';
 import { useAuth } from './AuthContext';
 import { api } from '../services/api';
+import { getDateForDayNumber, formatDateToISO } from '../utils/missionDates';
 import confetti from 'canvas-confetti';
 
 interface MissionContextType {
@@ -25,13 +27,13 @@ interface MissionContextType {
   // Timer State
   isTimerRunning: boolean;
   timerSeconds: number;
-  timerSubject: SubjectType | 'general';
-  setTimerSubject: (s: SubjectType | 'general') => void;
+  timerSubject: SubjectType | 'general' | 'backlog';
+  setTimerSubject: (s: SubjectType | 'general' | 'backlog') => void;
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
   saveTimerSession: (note?: string) => Promise<void>;
-  addManualStudyTime: (dayNumber: number, subject: SubjectType | 'general', hours: number, minutes: number) => Promise<void>;
+  addManualStudyTime: (dayNumber: number, subject: SubjectType | 'general' | 'backlog', hours: number, minutes: number) => Promise<void>;
   // Chapter Actions
   addChapter: (subject: SubjectType, name: string, totalLectures?: number) => Promise<Chapter>;
   updateChapter: (id: string, updates: Partial<Chapter>) => Promise<void>;
@@ -42,10 +44,13 @@ interface MissionContextType {
   adjustRevisionCount: (chapterId: string, delta: number) => Promise<void>;
   // Day Log & Routine Actions
   updateDayLog: (dayNumber: number, data: Partial<DayLog>) => Promise<void>;
+  updateDailyTargetHours: (dayNumber: number, targetHours: number) => Promise<void>;
+  updateSubjectTargetHours: (dayNumber: number, targets: { physics: number; chemistry: number; mathematics: number; backlog: number }) => Promise<void>;
+  updateBacklogSlot: (dayNumber: number, slot: Partial<DailyBacklogSlot>) => Promise<void>;
   updateMealRoutine: (dayNumber: number, meal: 'breakfast' | 'lunch' | 'dinner', checked: boolean) => Promise<void>;
   updateWaterIntake: (dayNumber: number, deltaMl: number) => Promise<void>;
   // Task Actions
-  addDailyTask: (dayNumber: number, subject: SubjectType | 'general', title: string) => Promise<void>;
+  addDailyTask: (dayNumber: number, subject: SubjectType | 'general' | 'backlog', title: string) => Promise<void>;
   toggleDailyTask: (taskId: string) => Promise<void>;
   deleteDailyTask: (taskId: string) => Promise<void>;
   // Mock Test Actions
@@ -78,7 +83,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Timer State
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
-  const [timerSubject, setTimerSubject] = useState<SubjectType | 'general'>('physics');
+  const [timerSubject, setTimerSubject] = useState<SubjectType | 'general' | 'backlog'>('physics');
 
   // Hydrate from Auth Context
   useEffect(() => {
@@ -120,7 +125,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const durationMinutes = Number((timerSeconds / 60).toFixed(1));
     const dayNumber = activeDayNumber;
-    const dateStr = `2026-08-${String(23 + dayNumber).padStart(2, '0')}`;
+    const dateStr = formatDateToISO(getDateForDayNumber(dayNumber));
 
     setSyncStatus('syncing');
     try {
@@ -147,13 +152,13 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const addManualStudyTime = async (dayNumber: number, subject: SubjectType | 'general', hours: number, minutes: number) => {
+  const addManualStudyTime = async (dayNumber: number, subject: SubjectType | 'general' | 'backlog', hours: number, minutes: number) => {
     const totalMinutes = (hours * 60) + minutes;
     if (totalMinutes <= 0) return;
 
     setSyncStatus('syncing');
     try {
-      const dateStr = `2026-08-${String(23 + dayNumber).padStart(2, '0')}`;
+      const dateStr = formatDateToISO(getDateForDayNumber(dayNumber));
       const res = await api.logTimerSession({
         dayNumber,
         date: dateStr,
@@ -205,6 +210,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return res.chapter;
     } catch (err) {
       setSyncStatus('error');
+      console.error('Add chapter error:', err);
       throw err;
     }
   };
@@ -248,32 +254,27 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await updateChapter(chapterId, { completedLectures: newCompleted });
 
     if (!isCompleted && newCompleted.length === ch.totalLectures) {
-      confetti({ particleCount: 50, spread: 70, origin: { y: 0.7 } });
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
     }
   };
 
-  const setChapterPYQ = async (chapterId: string, pyqUpdates: Partial<PYQTracking>) => {
+  const setChapterPYQ = async (chapterId: string, pyq: Partial<PYQTracking>) => {
     const ch = chapters.find(c => c.id === chapterId);
     if (!ch) return;
 
-    const newPyq: PYQTracking = {
+    const updatedPyq: PYQTracking = {
       ...ch.pyq,
-      ...pyqUpdates,
+      ...pyq,
     };
 
-    if (pyqUpdates.isDone !== undefined && pyqUpdates.isDone) {
-      newPyq.completed = newPyq.total || 100;
-    }
-
-    await updateChapter(chapterId, { pyq: newPyq });
+    await updateChapter(chapterId, { pyq: updatedPyq });
   };
 
   const toggleShortNotes = async (chapterId: string) => {
     const ch = chapters.find(c => c.id === chapterId);
     if (!ch) return;
 
-    const newStatus = !ch.shortNotesMade;
-    await updateChapter(chapterId, { shortNotesMade: newStatus });
+    await updateChapter(chapterId, { shortNotesMade: !ch.shortNotesMade });
   };
 
   const adjustRevisionCount = async (chapterId: string, delta: number) => {
@@ -284,9 +285,24 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await updateChapter(chapterId, { revisionCount: newCount });
   };
 
-  // ---------------- DAY LOGS & ROUTINE ---------------- //
+  // ---------------- DAY LOG & ROUTINE ---------------- //
 
   const updateDayLog = async (dayNumber: number, data: Partial<DayLog>) => {
+    const existing = dayLogs[dayNumber] || {
+      dayNumber,
+      date: formatDateToISO(getDateForDayNumber(dayNumber)),
+      targetHours: user?.targets.dailyStudyHoursGoal || 15,
+      actualHours: 0,
+      status: 'not_started',
+      meals: { breakfast: false, lunch: false, dinner: false },
+      waterMl: 0,
+      subjectHours: { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 },
+      subjectTargetHours: { physics: 4.5, chemistry: 4.5, mathematics: 4.5, backlog: 1.5 },
+    };
+
+    const merged = { ...existing, ...data };
+    setDayLogs(prev => ({ ...prev, [dayNumber]: merged as DayLog }));
+
     setSyncStatus('syncing');
     try {
       const res = await api.saveDayLog(dayNumber, data);
@@ -295,20 +311,40 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setSyncStatus('saved');
     } catch (err) {
       setSyncStatus('error');
-      throw err;
+      console.error('Save day log error:', err);
     }
+  };
+
+  const updateDailyTargetHours = async (dayNumber: number, targetHours: number) => {
+    const validHours = Math.max(1, Math.min(24, Number(targetHours) || 15));
+    await updateDayLog(dayNumber, { targetHours: validHours });
+  };
+
+  const updateSubjectTargetHours = async (
+    dayNumber: number, 
+    targets: { physics: number; chemistry: number; mathematics: number; backlog: number }
+  ) => {
+    await updateDayLog(dayNumber, { subjectTargetHours: targets });
+  };
+
+  const updateBacklogSlot = async (dayNumber: number, slotUpdate: Partial<DailyBacklogSlot>) => {
+    const existing = dayLogs[dayNumber];
+    const currentBacklog = existing?.backlogSlot || { title: '', completed: false, notes: '', hours: 0 };
+    const updatedBacklog = { ...currentBacklog, ...slotUpdate };
+    await updateDayLog(dayNumber, { backlogSlot: updatedBacklog });
   };
 
   const updateMealRoutine = async (dayNumber: number, meal: 'breakfast' | 'lunch' | 'dinner', checked: boolean) => {
     const existing = dayLogs[dayNumber] || {
       dayNumber,
-      date: `2026-08-${String(23 + dayNumber).padStart(2, '0')}`,
-      targetHours: user?.targets.dailyStudyHoursGoal || 10,
+      date: formatDateToISO(getDateForDayNumber(dayNumber)),
+      targetHours: user?.targets.dailyStudyHoursGoal || 15,
       actualHours: 0,
       status: 'not_started',
       meals: { breakfast: false, lunch: false, dinner: false },
       waterMl: 0,
-      subjectHours: { physics: 0, chemistry: 0, mathematics: 0 }
+      subjectHours: { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 },
+      subjectTargetHours: { physics: 4.5, chemistry: 4.5, mathematics: 4.5, backlog: 1.5 },
     };
 
     const newMeals = {
@@ -322,13 +358,14 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateWaterIntake = async (dayNumber: number, deltaMl: number) => {
     const existing = dayLogs[dayNumber] || {
       dayNumber,
-      date: `2026-08-${String(23 + dayNumber).padStart(2, '0')}`,
-      targetHours: user?.targets.dailyStudyHoursGoal || 10,
+      date: formatDateToISO(getDateForDayNumber(dayNumber)),
+      targetHours: user?.targets.dailyStudyHoursGoal || 15,
       actualHours: 0,
       status: 'not_started',
       meals: { breakfast: false, lunch: false, dinner: false },
       waterMl: 0,
-      subjectHours: { physics: 0, chemistry: 0, mathematics: 0 }
+      subjectHours: { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 },
+      subjectTargetHours: { physics: 4.5, chemistry: 4.5, mathematics: 4.5, backlog: 1.5 },
     };
 
     const newWater = Math.max(0, (existing.waterMl || 0) + deltaMl);
@@ -337,7 +374,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ---------------- TASKS ---------------- //
 
-  const addDailyTask = async (dayNumber: number, subject: SubjectType | 'general', title: string) => {
+  const addDailyTask = async (dayNumber: number, subject: SubjectType | 'general' | 'backlog', title: string) => {
     if (!title.trim()) return;
     setSyncStatus('syncing');
     try {
@@ -388,7 +425,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSyncStatus('syncing');
     try {
       await api.deleteTask(taskId);
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+      setTasks(prev => prev.filter(item => item.id !== taskId));
       setSyncStatus('saved');
     } catch (err) {
       setSyncStatus('error');
@@ -404,6 +441,7 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const res = await api.saveMockTest(data);
       setMockTests(prev => [res.mockTest, ...prev]);
       setSyncStatus('saved');
+      confetti({ particleCount: 35, spread: 60 });
     } catch (err) {
       setSyncStatus('error');
       throw err;
@@ -450,6 +488,9 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toggleShortNotes,
         adjustRevisionCount,
         updateDayLog,
+        updateDailyTargetHours,
+        updateSubjectTargetHours,
+        updateBacklogSlot,
         updateMealRoutine,
         updateWaterIntake,
         addDailyTask,

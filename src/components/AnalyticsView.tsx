@@ -38,7 +38,7 @@ export const AnalyticsView: React.FC = () => {
     const dayNum = startDay + idx;
     const log = dayLogs[dayNum];
     const hrs = log ? log.actualHours : 0;
-    const target = log ? log.targetHours : (user?.targets.dailyStudyHoursGoal || 10);
+    const target = log?.targetHours || user?.targets.dailyStudyHoursGoal || 15;
     return {
       dayNum,
       hours: hrs,

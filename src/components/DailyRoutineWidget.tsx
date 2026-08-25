@@ -2,6 +2,7 @@ import React from 'react';
 import { Utensils, Droplets, CheckCircle2, Circle, Plus, Minus } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { useAuth } from '../context/AuthContext';
+import { getDateForDayNumber, formatDateToISO } from '../utils/missionDates';
 
 interface DailyRoutineWidgetProps {
   dayNumber: number;
@@ -13,13 +14,13 @@ export const DailyRoutineWidget: React.FC<DailyRoutineWidgetProps> = ({ dayNumbe
 
   const currentLog = dayLogs[dayNumber] || {
     dayNumber,
-    date: `2026-08-${String(23 + dayNumber).padStart(2, '0')}`,
-    targetHours: user?.targets?.dailyStudyHoursGoal || 10,
+    date: formatDateToISO(getDateForDayNumber(dayNumber)),
+    targetHours: user?.targets?.dailyStudyHoursGoal || 15,
     actualHours: 0,
     status: 'not_started',
     meals: { breakfast: false, lunch: false, dinner: false },
     waterMl: 0,
-    subjectHours: { physics: 0, chemistry: 0, mathematics: 0 }
+    subjectHours: { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 }
   };
 
   const meals = currentLog.meals || { breakfast: false, lunch: false, dinner: false };

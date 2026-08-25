@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 export async function exportElementAsImage(elementId: string, filename: string): Promise<boolean> {
   const element = document.getElementById(elementId);
@@ -8,14 +8,14 @@ export async function exportElementAsImage(elementId: string, filename: string):
   }
 
   try {
-    const canvas = await html2canvas(element, {
-      scale: 2, // 2x retina clarity
-      useCORS: true,
-      backgroundColor: '#020617', // slate-950
-      logging: false,
+    const dataUrl = await toPng(element, {
+      quality: 0.98,
+      pixelRatio: 2,
+      backgroundColor: '#020617',
+      cacheBust: true,
+      skipAutoScale: true,
     });
 
-    const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.download = `${filename}.png`;
     link.href = dataUrl;

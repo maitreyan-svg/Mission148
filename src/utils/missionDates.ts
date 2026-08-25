@@ -1,26 +1,26 @@
 /**
  * Mission 148 Timeline Constants & Utilities
- * Mission Start: 24 August 2026 (Day 1)
- * Mission End: 18 January 2027 (Day 148)
+ * Mission Start: 25 August 2026 (Day 1)
+ * Mission End: 19 January 2027 (Day 148)
  * Target JEE Main: 21 January 2027
  */
 
-export const MISSION_START_DATE_STR = '2026-08-24';
-export const MISSION_END_DATE_STR = '2027-01-18';
+export const MISSION_START_DATE_STR = '2026-08-25';
+export const MISSION_END_DATE_STR = '2027-01-19';
 export const JEE_MAIN_EXAM_DATE_STR = '2027-01-21';
 export const TOTAL_MISSION_DAYS = 148;
 
 // Create clean UTC/Local midnight date instances
-export const MISSION_START_DATE = new Date(2026, 7, 24); // Aug 24, 2026 (month is 0-indexed)
-export const MISSION_END_DATE = new Date(2027, 0, 18); // Jan 18, 2027
+export const MISSION_START_DATE = new Date(2026, 7, 25); // Aug 25, 2026 (month is 0-indexed: 7 is August)
+export const MISSION_END_DATE = new Date(2027, 0, 19); // Jan 19, 2027
 export const JEE_MAIN_EXAM_DATE = new Date(2027, 0, 21); // Jan 21, 2027
 
 export interface MissionDayInfo {
   dayNumber: number;
   dateStr: string; // YYYY-MM-DD
-  formattedDate: string; // e.g. "24 August 2026"
-  shortDate: string; // e.g. "24 Aug"
-  dayOfWeek: string; // e.g. "Monday"
+  formattedDate: string; // e.g. "25 August 2026"
+  shortDate: string; // e.g. "25 Aug"
+  dayOfWeek: string; // e.g. "Tuesday"
   daysRemainingInMission: number;
 }
 
@@ -29,7 +29,7 @@ export interface MissionDayInfo {
  */
 export function getDateForDayNumber(dayNumber: number): Date {
   const clampedDay = Math.max(1, Math.min(TOTAL_MISSION_DAYS, dayNumber));
-  const date = new Date(2026, 7, 24);
+  const date = new Date(2026, 7, 25); // August 25, 2026 as Day 1
   date.setDate(date.getDate() + (clampedDay - 1));
   return date;
 }
@@ -83,17 +83,18 @@ export function formatReadableDate(input: string | Date, options?: { includeYear
 export function getMissionDayInfo(dayNumber: number): MissionDayInfo {
   const date = getDateForDayNumber(dayNumber);
   const dateStr = formatDateToISO(date);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fullMonths = [
-    'August', 'September', 'October', 'November', 'December', 'January'
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return {
     dayNumber,
     dateStr,
-    formattedDate: `${date.getDate()} ${fullMonths[date.getMonth() >= 7 ? date.getMonth() - 7 : date.getMonth() + 5]} ${date.getFullYear()}`,
-    shortDate: `${date.getDate()} ${months[date.getMonth()]}`,
+    formattedDate: `${date.getDate()} ${fullMonths[date.getMonth()]} ${date.getFullYear()}`,
+    shortDate: `${date.getDate()} ${shortMonths[date.getMonth()]}`,
     dayOfWeek: days[date.getDay()],
     daysRemainingInMission: TOTAL_MISSION_DAYS - dayNumber,
   };
@@ -103,8 +104,6 @@ export function getMissionDayInfo(dayNumber: number): MissionDayInfo {
  * Get days remaining to JEE Main Exam (21 Jan 2027) relative to a specific mission day
  */
 export function getExamCountdownDays(currentMissionDay: number): number {
-  // Day 1 (Aug 24) is 150 days before Jan 21, 2027
-  // Day 148 (Jan 18) is 3 days before Jan 21, 2027
   const dayDate = getDateForDayNumber(currentMissionDay);
   const examDate = new Date(2027, 0, 21);
   const diffTime = examDate.getTime() - dayDate.getTime();

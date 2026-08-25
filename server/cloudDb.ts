@@ -129,8 +129,14 @@ export async function getOrCreatePersonalDefaultUser(customUsername?: string): P
     const defaultTargets = {
       jeeMainPercentile: '96+',
       jeeAdvancedAIR: '< 10,000',
-      dailyStudyHoursGoal: 10,
+      dailyStudyHoursGoal: 15,
       dailyWaterGoalMl: 3000,
+      defaultSubjectSplit: {
+        physics: 4.5,
+        chemistry: 4.5,
+        mathematics: 4.5,
+        backlog: 1.5,
+      },
     };
 
     const inserted = await db.insert(users).values({
@@ -477,17 +483,21 @@ export async function getCloudUserFullRecord(userId: string) {
   dayLogsRows.forEach(r => {
     let meals = { breakfast: false, lunch: false, dinner: false };
     let chaptersStudied: string[] = [];
-    let subjectHours = { physics: 0, chemistry: 0, mathematics: 0 };
+    let subjectHours = { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 };
+    let subjectTargetHours = { physics: 4.5, chemistry: 4.5, mathematics: 4.5, backlog: 1.5 };
+    let backlogSlot = undefined;
     try {
       if (r.meals) meals = JSON.parse(r.meals);
       if (r.chaptersStudied) chaptersStudied = JSON.parse(r.chaptersStudied);
       if (r.subjectHours) subjectHours = JSON.parse(r.subjectHours);
+      if ((r as any).subjectTargetHours) subjectTargetHours = JSON.parse((r as any).subjectTargetHours);
+      if ((r as any).backlogSlot) backlogSlot = JSON.parse((r as any).backlogSlot);
     } catch (e) {}
 
     parsedDayLogs[r.dayNumber] = {
       dayNumber: r.dayNumber,
       date: r.date,
-      targetHours: r.targetHours,
+      targetHours: r.targetHours || 15,
       actualHours: parseFloat(r.actualHours) || 0,
       status: r.status as any,
       notes: r.notes || undefined,
@@ -495,6 +505,8 @@ export async function getCloudUserFullRecord(userId: string) {
       waterMl: r.waterMl,
       chaptersStudied,
       subjectHours,
+      subjectTargetHours,
+      backlogSlot,
       lecturesCompletedCount: r.lecturesCompletedCount || 0,
       pyqsCompletedCount: r.pyqsCompletedCount || 0,
       revisionsLoggedCount: r.revisionsLoggedCount || 0,
@@ -618,14 +630,16 @@ export async function syncFullCloudUserData(userId: string, payload: {
         userId,
         dayNumber: log.dayNumber,
         date: log.date || new Date().toISOString().split('T')[0],
-        targetHours: log.targetHours || 10,
+        targetHours: log.targetHours || 15,
         actualHours: String(log.actualHours || 0),
         status: log.status || 'not_started',
         notes: log.notes || null,
         meals: JSON.stringify(log.meals || { breakfast: false, lunch: false, dinner: false }),
         waterMl: log.waterMl || 0,
         chaptersStudied: JSON.stringify(log.chaptersStudied || []),
-        subjectHours: JSON.stringify(log.subjectHours || { physics: 0, chemistry: 0, mathematics: 0 }),
+        subjectHours: JSON.stringify(log.subjectHours || { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 }),
+        subjectTargetHours: JSON.stringify(log.subjectTargetHours || { physics: 4.5, chemistry: 4.5, mathematics: 4.5, backlog: 1.5 }),
+        backlogSlot: log.backlogSlot ? JSON.stringify(log.backlogSlot) : null,
         lecturesCompletedCount: log.lecturesCompletedCount || 0,
         pyqsCompletedCount: log.pyqsCompletedCount || 0,
         revisionsLoggedCount: log.revisionsLoggedCount || 0,

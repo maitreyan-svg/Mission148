@@ -24,7 +24,7 @@ export const ProfileSettingsView: React.FC = () => {
   const [username, setUsername] = useState<string>(user?.username?.replace(/^@/, '') || 'aspirant2027');
   const [jeeMainPercentile, setJeeMainPercentile] = useState<string>(user?.targets.jeeMainPercentile || '96+');
   const [jeeAdvancedAir, setJeeAdvancedAir] = useState<string>(user?.targets.jeeAdvancedAir || '< 10,000');
-  const [dailyStudyGoal, setDailyStudyGoal] = useState<number>(user?.targets.dailyStudyHoursGoal || 10);
+  const [dailyStudyGoal, setDailyStudyGoal] = useState<number>(user?.targets.dailyStudyHoursGoal || 15);
   const [dailyWaterGoal, setDailyWaterGoal] = useState<number>(user?.targets.dailyWaterGoalMl || 3000);
   const [profileMsg, setProfileMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -43,7 +43,7 @@ export const ProfileSettingsView: React.FC = () => {
         targets: {
           jeeMainPercentile: jeeMainPercentile.trim(),
           jeeAdvancedAir: jeeAdvancedAir.trim(),
-          dailyStudyHoursGoal: Number(dailyStudyGoal) || 10,
+          dailyStudyHoursGoal: Number(dailyStudyGoal) || 15,
           dailyWaterGoalMl: Number(dailyWaterGoal) || 3000,
         },
       });

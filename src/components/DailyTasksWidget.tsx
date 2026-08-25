@@ -8,7 +8,8 @@ import {
   FlaskConical, 
   Calculator, 
   Zap,
-  ListTodo
+  ListTodo,
+  RotateCw
 } from 'lucide-react';
 import { SubjectType, DailyTask } from '../types';
 import { useMission } from '../context/MissionContext';
@@ -20,7 +21,7 @@ interface DailyTasksWidgetProps {
 export const DailyTasksWidget: React.FC<DailyTasksWidgetProps> = ({ dayNumber }) => {
   const { tasks, addDailyTask, toggleDailyTask, deleteDailyTask } = useMission();
   const [newTaskTitle, setNewTaskTitle] = useState<string>('');
-  const [selectedSubject, setSelectedSubject] = useState<SubjectType | 'general'>('physics');
+  const [selectedSubject, setSelectedSubject] = useState<SubjectType | 'general' | 'backlog'>('physics');
 
   const dayTasks = tasks.filter(t => t.dayNumber === dayNumber);
 
@@ -31,7 +32,7 @@ export const DailyTasksWidget: React.FC<DailyTasksWidgetProps> = ({ dayNumber })
     setNewTaskTitle('');
   };
 
-  const getSubjectBadge = (subj: SubjectType | 'general') => {
+  const getSubjectBadge = (subj: SubjectType | 'general' | 'backlog') => {
     switch (subj) {
       case 'physics':
         return { label: 'Physics', icon: Atom, color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' };
@@ -39,6 +40,8 @@ export const DailyTasksWidget: React.FC<DailyTasksWidgetProps> = ({ dayNumber })
         return { label: 'Chemistry', icon: FlaskConical, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
       case 'mathematics':
         return { label: 'Math', icon: Calculator, color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' };
+      case 'backlog':
+        return { label: 'Backlog', icon: RotateCw, color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
       default:
         return { label: 'General', icon: Zap, color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' };
     }
@@ -76,6 +79,7 @@ export const DailyTasksWidget: React.FC<DailyTasksWidgetProps> = ({ dayNumber })
             <option value="physics">⚛ Physics</option>
             <option value="chemistry">🧪 Chem</option>
             <option value="mathematics">📐 Math</option>
+            <option value="backlog">🔄 Backlog</option>
             <option value="general">⚡ General</option>
           </select>
 

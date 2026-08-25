@@ -25,27 +25,32 @@ async function startServer() {
   // JSON Body Parser with 10MB limit for cloud backups/imports
   app.use(express.json({ limit: '10mb' }));
 
-  // Auth Middleware
+  // Auth Middleware with seamless fallback for personal mode
   const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'Authentication required. Please log in.' });
-      return;
-    }
+    let userId: string | null = null;
 
-    const token = authHeader.split(' ')[1];
-    try {
-      const userId = await verifyAnyToken(token);
-      if (!userId) {
-        res.status(401).json({ error: 'Session expired or invalid token. Please log in again.' });
-        return;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        userId = await verifyAnyToken(token);
+      } catch (e: any) {
+        // Fall through to auto personal user
       }
-
-      (req as any).userId = userId;
-      next();
-    } catch (e: any) {
-      res.status(401).json({ error: 'Authentication verification failed.' });
     }
+
+    if (!userId) {
+      try {
+        const personal = await getOrCreatePersonalDefaultUser();
+        userId = personal.user.id;
+      } catch (e) {
+        // Fallback ID if DB is temporarily connecting
+        userId = 'usr_personal_aspirant';
+      }
+    }
+
+    (req as any).userId = userId;
+    next();
   };
 
   // Health Check
@@ -374,28 +379,49 @@ async function startServer() {
       const newId = `ch_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const now = new Date();
 
+      const totalLec = Math.max(1, Number(data.totalLectures) || 10);
+      const pyqData = data.pyq || { isDone: false, isDetailed: true, total: 100, completed: 0, correct: 0, incorrect: 0 };
+
       await db.insert(chapters).values({
         id: newId,
         userId,
         subject: data.subject,
-        name: data.name,
-        totalLectures: data.totalLectures || 0,
-        completedLectures: JSON.stringify(data.completedLectures || []),
-        pyq: JSON.stringify(data.pyq || { isDone: false, isDetailed: false, total: 0, completed: 0, correct: 0, incorrect: 0 }),
+        name: data.name.trim(),
+        totalLectures: totalLec,
+        completedLectures: typeof data.completedLectures === 'string' ? data.completedLectures : JSON.stringify(data.completedLectures || []),
+        pyq: typeof pyqData === 'string' ? pyqData : JSON.stringify(pyqData),
         shortNotesMade: !!data.shortNotesMade,
-        revisionCount: data.revisionCount || 0,
-        order: data.order || 0,
+        revisionCount: Number(data.revisionCount) || 0,
+        order: Number(data.order) || 0,
         createdAt: now,
         updatedAt: now,
       });
 
       const userRecord = await getCloudUserFullRecord(userId);
       const stats = userRecord ? calculateStatsFromRecords(userRecord) : null;
-      const created = userRecord?.chapters.find(c => c.id === newId);
+      let created = userRecord?.chapters.find(c => c.id === newId);
+
+      if (!created) {
+        created = {
+          id: newId,
+          userId,
+          subject: data.subject,
+          name: data.name.trim(),
+          totalLectures: totalLec,
+          completedLectures: data.completedLectures || [],
+          pyq: pyqData,
+          shortNotesMade: !!data.shortNotesMade,
+          revisionCount: Number(data.revisionCount) || 0,
+          order: Number(data.order) || 0,
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        };
+      }
 
       res.status(201).json({ chapter: created, stats });
     } catch (err: any) {
-      res.status(400).json({ error: err.message });
+      console.error('Add chapter error:', err);
+      res.status(400).json({ error: err.message || 'Failed to add chapter.' });
     }
   });
 
@@ -407,14 +433,14 @@ async function startServer() {
       const now = new Date();
 
       const updateObj: any = { updatedAt: now };
-      if (updates.name) updateObj.name = updates.name;
+      if (updates.name) updateObj.name = updates.name.trim();
       if (updates.subject) updateObj.subject = updates.subject;
-      if (updates.totalLectures !== undefined) updateObj.totalLectures = updates.totalLectures;
-      if (updates.completedLectures) updateObj.completedLectures = JSON.stringify(updates.completedLectures);
-      if (updates.pyq) updateObj.pyq = JSON.stringify(updates.pyq);
-      if (updates.shortNotesMade !== undefined) updateObj.shortNotesMade = updates.shortNotesMade;
-      if (updates.revisionCount !== undefined) updateObj.revisionCount = updates.revisionCount;
-      if (updates.order !== undefined) updateObj.order = updates.order;
+      if (updates.totalLectures !== undefined) updateObj.totalLectures = Number(updates.totalLectures);
+      if (updates.completedLectures) updateObj.completedLectures = typeof updates.completedLectures === 'string' ? updates.completedLectures : JSON.stringify(updates.completedLectures);
+      if (updates.pyq) updateObj.pyq = typeof updates.pyq === 'string' ? updates.pyq : JSON.stringify(updates.pyq);
+      if (updates.shortNotesMade !== undefined) updateObj.shortNotesMade = !!updates.shortNotesMade;
+      if (updates.revisionCount !== undefined) updateObj.revisionCount = Number(updates.revisionCount);
+      if (updates.order !== undefined) updateObj.order = Number(updates.order);
 
       await db.update(chapters).set(updateObj).where(and(eq(chapters.userId, userId), eq(chapters.id, chapterId)));
 
@@ -460,22 +486,24 @@ async function startServer() {
         and(eq(dayLogs.userId, userId), eq(dayLogs.dayNumber, dayNum))
       );
 
-      const logData = {
+      const logData: any = {
         userId,
         dayNumber: dayNum,
         date: body.date || new Date().toISOString().split('T')[0],
-        targetHours: body.targetHours || 10,
+        targetHours: Number(body.targetHours) || 15,
         actualHours: String(body.actualHours || 0),
         status: body.status || 'not_started',
         notes: body.notes || null,
-        meals: JSON.stringify(body.meals || { breakfast: false, lunch: false, dinner: false }),
-        waterMl: body.waterMl || 0,
-        chaptersStudied: JSON.stringify(body.chaptersStudied || []),
-        subjectHours: JSON.stringify(body.subjectHours || { physics: 0, chemistry: 0, mathematics: 0 }),
-        lecturesCompletedCount: body.lecturesCompletedCount || 0,
-        pyqsCompletedCount: body.pyqsCompletedCount || 0,
-        revisionsLoggedCount: body.revisionsLoggedCount || 0,
-        shortNotesLoggedCount: body.shortNotesLoggedCount || 0,
+        meals: typeof body.meals === 'string' ? body.meals : JSON.stringify(body.meals || { breakfast: false, lunch: false, dinner: false }),
+        waterMl: Number(body.waterMl) || 0,
+        chaptersStudied: typeof body.chaptersStudied === 'string' ? body.chaptersStudied : JSON.stringify(body.chaptersStudied || []),
+        subjectHours: typeof body.subjectHours === 'string' ? body.subjectHours : JSON.stringify(body.subjectHours || { physics: 0, chemistry: 0, mathematics: 0, backlog: 0 }),
+        subjectTargetHours: typeof body.subjectTargetHours === 'string' ? body.subjectTargetHours : JSON.stringify(body.subjectTargetHours || { physics: 4.5, chemistry: 4.5, mathematics: 4.5, backlog: 1.5 }),
+        backlogSlot: body.backlogSlot ? (typeof body.backlogSlot === 'string' ? body.backlogSlot : JSON.stringify(body.backlogSlot)) : null,
+        lecturesCompletedCount: Number(body.lecturesCompletedCount) || 0,
+        pyqsCompletedCount: Number(body.pyqsCompletedCount) || 0,
+        revisionsLoggedCount: Number(body.revisionsLoggedCount) || 0,
+        shortNotesLoggedCount: Number(body.shortNotesLoggedCount) || 0,
         updatedAt: now,
       };
 
@@ -492,6 +520,7 @@ async function startServer() {
 
       res.json({ dayLog: userRecord?.dayLogs[dayNum], stats });
     } catch (err: any) {
+      console.error('Day log error:', err);
       res.status(400).json({ error: err.message });
     }
   });

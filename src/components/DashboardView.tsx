@@ -48,7 +48,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateTab }) =
   const mathChapters = chapters.filter(c => c.subject === 'mathematics');
 
   const currentLog = dayLogs[activeDayNumber];
-  const targetHours = user?.targets?.dailyStudyHoursGoal || 10;
+  const targetHours = currentLog?.targetHours || user?.targets?.dailyStudyHoursGoal || 15;
   const actualHours = currentLog?.actualHours || 0;
   const targetWater = user?.targets?.dailyWaterGoalMl || 3000;
   const waterMl = currentLog?.waterMl || 0;

@@ -37,14 +37,16 @@ export const dayLogs = pgTable('day_logs', {
   userId: text('user_id').notNull(),
   dayNumber: integer('day_number').notNull(),
   date: text('date').notNull(), // YYYY-MM-DD
-  targetHours: integer('target_hours').default(10).notNull(),
+  targetHours: integer('target_hours').default(15).notNull(),
   actualHours: text('actual_hours').default('0').notNull(), // decimal string
   status: text('status').default('not_started').notNull(),
   notes: text('notes'),
   meals: text('meals').default('{"breakfast":false,"lunch":false,"dinner":false}').notNull(),
   waterMl: integer('water_ml').default(0).notNull(),
   chaptersStudied: text('chapters_studied').default('[]').notNull(),
-  subjectHours: text('subject_hours').default('{"physics":0,"chemistry":0,"mathematics":0}').notNull(),
+  subjectHours: text('subject_hours').default('{"physics":0,"chemistry":0,"mathematics":0,"backlog":0}').notNull(),
+  subjectTargetHours: text('subject_target_hours').default('{"physics":4.5,"chemistry":4.5,"mathematics":4.5,"backlog":1.5}'),
+  backlogSlot: text('backlog_slot'),
   lecturesCompletedCount: integer('lectures_completed_count').default(0),
   pyqsCompletedCount: integer('pyqs_completed_count').default(0),
   revisionsLoggedCount: integer('revisions_logged_count').default(0),
